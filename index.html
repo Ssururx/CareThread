@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2A6B7C">
+<meta name="description" content="CareThread: a shared care log and handoff tool for families caring for someone together.">
+<title>CareThread — shared care, no dropped stitches</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%232A6B7C'/%3E%3Cpath d='M30.8 29.4C26.8 31.4 23.6 30.8 20 28.6C11.5 23.6 9.2 17.6 12.6 14C15.4 11.2 19 12.4 20 15.6C21 12.4 24.6 11.2 27.4 14C30.8 17.6 28.5 23.6 20 28.6' fill='none' stroke='%23FFF7E4' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='30.8' cy='29.4' r='2.4' fill='%23D4874E'/%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#F7F5F2; --card:#FFFDF9; --ink:#1A1F2E; --teal:#2A6B7C; --teal-deep:#1F5260;
+  --amber:#D4874E; --amber-ink:#8A4A17; --green:#3D7A5A; --muted:#5C636E; --line:#E3DCD0;
+  --cream:#FFF7E4; --brick:#9B3B2E;
+  /* fonts: fraunces and figtree if they are installed on the device, if not it uses normal system fonts. nothing to download so the app works offline */
+  --display:'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --body:'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.5 var(--body);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .28  0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.15;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(1.65rem,4.5vw,2.35rem)}
+h2{font-size:1.35rem}
+h3{font-size:1.1rem}
+p{margin:0}
+a{color:var(--teal)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:12px;top:-60px;background:var(--ink);color:#fff;padding:10px 14px;border-radius:10px;z-index:100}
+.skip:focus{top:10px}
+
+/* ---------- page change: a short quiet fade ---------- */
+@keyframes viewIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.view-in{animation:viewIn .22s cubic-bezier(.2,.7,.3,1) both}
+
+/* ---------- shell ---------- */
+.shell{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr)}
+.shell>div{min-width:0}   /* lets the page column shrink to the screen so a wide chart scrolls inside its card and doesn't make the whole page wider */
+.side-nav{display:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px;padding-top:max(14px,env(safe-area-inset-top))}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.brand svg{flex:none}
+.brand b{font-family:var(--display);font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+.brand small{display:block;font-size:.72rem;color:var(--muted);letter-spacing:.02em;margin-top:-3px}
+.iconbtn{width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;color:var(--ink);text-decoration:none;transition:background .15s}
+.iconbtn:hover{background:#EFE9DF}
+.main{padding:8px 18px 130px;max-width:1080px;width:100%;margin:0 auto}
+.main:focus{outline:none}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1.5px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom));}
+.tabs a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;text-decoration:none;color:var(--muted);font-size:.74rem;font-weight:600;border-radius:14px;transition:background .18s,color .18s}
+.tabs a[aria-current="page"]{color:var(--teal);background:#E6F0F2}
+.tabs a.fab{position:relative}
+.tabs a.fab span.dot{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--amber);color:var(--ink);margin-top:-30px;border:4px solid var(--card);box-shadow:0 6px 14px rgba(138,74,23,.28)}
+.tabs a.fab[aria-current="page"]{background:none}
+
+@media(min-width:900px){
+  .shell{grid-template-columns:250px minmax(0,1fr)}
+  .topbar{display:none}
+  .tabs{display:none}
+  .side-nav{display:flex;flex-direction:column;gap:6px;padding:26px 18px;position:sticky;top:0;height:100vh;border-right:1.5px solid var(--line);background:rgba(255,253,249,.7)}
+  .side-nav nav{display:flex;flex-direction:column;gap:4px;margin-top:26px}
+  .side-nav nav a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;text-decoration:none;color:var(--ink);font-weight:600;min-height:48px;transition:background .18s,color .18s}
+  .side-nav nav a:hover{background:#EFE9DF}
+  .side-nav nav a[aria-current="page"]{background:var(--teal);color:#fff}
+  .side-nav .whoami{margin-top:auto;font-size:.85rem;color:var(--muted);border-top:1.5px dashed var(--line);padding-top:14px}
+  .main{padding:34px 40px 60px}
+}
+
+/* ---------- pieces ---------- */
+.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--amber-ink)}
+.lede{color:var(--muted);margin-top:6px;max-width:60ch}
+.pagehead{margin:10px 0 22px}
+.grid2{display:grid;gap:22px}
+@media(min-width:900px){.grid2{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:18px;min-width:0}
+.card h2{margin-bottom:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:14px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-weight:700;cursor:pointer;text-decoration:none;transition:background .15s,transform .1s}
+.btn:hover{background:var(--teal-deep)}
+.btn:active{transform:translateY(1px)}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:var(--ink)}
+.btn.amber:hover{background:#C97A41}
+.btn.ghost{background:transparent;color:var(--teal)}
+.btn.ghost:hover{background:#E6F0F2}
+.btn.danger{background:transparent;border-color:var(--brick);color:var(--brick)}
+.btn.danger:hover{background:#F6E3DE}
+.btn.small{min-height:40px;padding:0 14px;font-size:.92rem}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stack{display:grid;gap:14px}
+.muted{color:var(--muted)}
+.tiny{font-size:.82rem}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;background:#EFE9DF;font-size:.84rem;font-weight:600}
+.chip.t{background:#E6F0F2;color:var(--teal-deep)}
+.chip.a{background:#FBE9D8;color:var(--amber-ink)}
+.rbar{display:flex;align-items:center;gap:10px;margin:8px 0 2px;flex-wrap:wrap}
+.rbar label{font-weight:700;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.09em}
+.rbar select{width:auto;min-width:170px;font-weight:700}
+
+/* today layout. note + thread on the left, glance cards on the right. on a phone the stats go right under the note */
+.tgrid{display:grid;gap:22px}
+.tgrid .a{order:1}.tgrid .side{display:contents}.tgrid .b{order:2}.tgrid .c{order:3}.tgrid .d{order:4}
+@media(min-width:900px){
+  .tgrid{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+  .tgrid .a{grid-column:1;grid-row:1}.tgrid .c{grid-column:1;grid-row:2}
+  .tgrid .side{display:grid;gap:22px;grid-column:2;grid-row:1 / span 2;align-content:start}
+}
+
+/* handoff note */
+.note{position:relative;background:var(--cream);border:2px dashed rgba(212,135,78,.7);border-radius:14px;padding:28px 24px 20px;transform:rotate(-.35deg);box-shadow:0 10px 24px -14px rgba(138,74,23,.45)}
+.note::before{content:"";position:absolute;top:-13px;left:26px;width:92px;height:26px;background:rgba(212,135,78,.38);transform:rotate(-3deg);border-radius:3px}
+.note .tag{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--amber-ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.note p.body{font-family:var(--display);font-size:clamp(1.15rem,2.6vw,1.4rem);line-height:1.5;margin-top:10px;font-weight:500}
+.note.big p.body{font-size:clamp(1.3rem,3.2vw,1.65rem)}
+.note .foot{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.skel{height:14px;border-radius:8px;background:linear-gradient(90deg,#F0E6CB 25%,#F8EFD6 50%,#F0E6CB 75%);background-size:200% 100%;animation:sh 1.3s infinite;margin-top:12px}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px 8px;text-align:center}
+.stat .k{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:var(--display);font-size:clamp(1.1rem,4.6vw,1.5rem);font-weight:700;margin-top:2px;white-space:nowrap}
+.stat .s{font-size:.8rem;color:var(--muted)}
+.stat.ok .v{color:var(--green)} .stat.warn .v{color:var(--brick)}
+
+.nudge{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FBE9D8;border:1.5px solid #EBC49E;color:#5A2E0B}
+
+/* timeline */
+.timeline{list-style:none;margin:0;padding:0;position:relative}
+.timeline::before{content:"";position:absolute;left:19px;top:8px;bottom:8px;border-left:2.5px dashed var(--amber);opacity:.6}
+.timeline li{position:relative;padding-left:56px;margin-bottom:14px}
+.timeline .node{position:absolute;left:0;top:0;width:40px;height:40px;border-radius:50%;background:var(--card);border:2.5px solid var(--c);display:grid;place-items:center;color:var(--c)}
+.entry{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px 14px}
+.entry header{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between}
+.entry .who{font-weight:700}
+.entry .when{color:var(--muted);font-size:.86rem}
+.mood{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 8px;border-radius:99px;font-size:.84rem;font-weight:700;background:var(--bg);color:var(--c)}
+.entry .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.entry .tags .chip{font-size:.78rem;padding:2px 9px}
+.entry .tags .chip.warn{background:#F6E3DE;color:var(--brick)}
+.entry p.note-txt{margin-top:8px;color:#2E3445;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.entry p.note-txt.open{display:block;-webkit-line-clamp:unset}
+.entry .eactions{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
+.linkbtn{background:none;border:0;color:var(--teal);font-weight:700;font-size:.86rem;cursor:pointer;min-height:36px;padding:0 10px;border-radius:10px}
+.linkbtn:hover{background:#E6F0F2}
+.linkbtn.d{color:var(--brick)} .linkbtn.d:hover{background:#F6E3DE}
+.empty{padding:26px;text-align:center;border:2px dashed var(--line);border-radius:var(--radius);color:var(--muted)}
+
+/* form */
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-weight:700;margin-bottom:8px;padding:0}
+.moods{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.moods label{cursor:pointer}
+.moods input{position:absolute;opacity:0;pointer-events:none}
+.moods .tile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px 8px;border-radius:16px;border:2px solid var(--line);background:var(--card);min-height:92px;color:var(--c);text-align:center;transition:background .15s,border-color .15s}
+.moods .tile b{font-size:.76rem;color:var(--ink);line-height:1.15}
+.moods .tile i{font-style:normal;font-family:var(--display);font-weight:700;font-size:.95rem}
+.moods input:checked + .tile{background:var(--bg);border-color:var(--c);box-shadow:0 0 0 2px var(--c) inset}
+.moods input:focus-visible + .tile{outline:3px solid var(--amber);outline-offset:2px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+.seg label{cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:flex;align-items:center;justify-content:center;gap:6px;min-height:50px;font-weight:700;transition:background .15s,color .15s}
+.seg input:checked + span{background:var(--teal);color:#fff}
+.seg input:focus-visible + span{outline:3px solid var(--amber);outline-offset:-3px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips label{cursor:pointer}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips span{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 15px;border-radius:99px;border:2px solid var(--line);background:var(--card);font-weight:600;transition:background .15s,border-color .15s}
+.chips input:checked + span{background:#E6F0F2;border-color:var(--teal);color:var(--teal-deep)}
+.chips input:checked + span::before{content:"✓"}
+.chips.trig input:checked + span{background:#FBE9D8;border-color:var(--amber);color:var(--amber-ink)}
+.chips input:focus-visible + span{outline:3px solid var(--amber);outline-offset:2px}
+textarea,input[type=text],input[type=time],input[type=number],input[type=password],select{width:100%;min-height:48px;padding:10px 14px;border-radius:14px;border:2px solid var(--line);background:var(--card)}
+textarea{min-height:110px;resize:vertical}
+label.f{display:grid;gap:6px;font-weight:700}
+label.f small{font-weight:400;color:var(--muted)}
+.err{color:var(--brick);font-weight:600;min-height:1.4em}
+
+/* charts */
+.chartwrap{overflow-x:auto}
+svg.chart{width:100%;height:auto;display:block;min-width:420px}
+.insights{display:grid;gap:14px}
+@media(min-width:700px){.insights{grid-template-columns:1fr 1fr}}
+.insight{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:16px;display:grid;gap:6px;align-content:start}
+.insight .big{font-family:var(--display);font-size:2.1rem;font-weight:700;color:var(--teal);line-height:1}
+.insight .basis{font-size:.8rem;color:var(--muted)}
+.badge{justify-self:start;font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:#EFE9DF}
+.badge.strong{background:#DCEFE4;color:#1F5B3C}.badge.mod{background:#FBE9D8;color:var(--amber-ink)}
+.hbar{display:grid;grid-template-columns:130px 1fr 34px;gap:10px;align-items:center;margin:8px 0;font-size:.92rem}
+.hbar .bar{height:14px;border-radius:99px;background:#EFE9DF;overflow:hidden}
+.hbar .bar i{display:block;height:100%;background:var(--amber);border-radius:99px}
+pre.printcopy{display:none}
+table.plain{width:100%;border-collapse:collapse;font-size:.92rem}
+table.plain th,table.plain td{text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--line)}
+ul.clean{margin:0;padding-left:1.1rem;display:grid;gap:4px}
+.member{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1.5px dashed var(--line);flex-wrap:wrap}
+.member:last-child{border:0}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--teal);color:#fff;flex:none}
+.avatar.p{background:var(--amber);color:var(--ink)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.6rem;letter-spacing:.14em;font-weight:700;background:#fff;border:2px dashed var(--amber);border-radius:14px;padding:10px 16px;display:inline-block}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;min-height:48px}
+.switch input{width:26px;height:26px;accent-color:var(--teal)}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(min-width:900px){.toast{bottom:28px}}
+
+/* ---------- added with the care log part: handoff note extras, medication tracker, care timeline ---------- */
+/* where the two new blocks go on today (medications under the stats on a phone, care timeline last and full width on a desktop) */
+.tgrid .m{order:2}.tgrid .e{order:5}
+@media(min-width:900px){.tgrid .e{grid-column:1 / -1;grid-row:3}}
+
+.note p.body{white-space:pre-wrap;overflow-wrap:anywhere}
+.note.settle{animation:noteSettle .45s cubic-bezier(.2,.7,.3,1) both}
+@keyframes noteSettle{from{opacity:0;transform:translateY(10px) rotate(-1.2deg)}to{opacity:1;transform:translateY(0) rotate(-.35deg)}}
+.note .autosum{margin-top:14px;padding-top:12px;border-top:1.5px dashed rgba(212,135,78,.55)}
+.note .autosum p{font-size:.97rem}
+
+progress.medbar{width:100%;height:12px;border:0;border-radius:99px;overflow:hidden;background:#EFE9DF;appearance:none;-webkit-appearance:none}
+progress.medbar::-webkit-progress-bar{background:#EFE9DF;border-radius:99px}
+progress.medbar::-webkit-progress-value{background:var(--green);border-radius:99px;transition:width .3s ease}
+progress.medbar::-moz-progress-bar{background:var(--green);border-radius:99px}
+.medtext{margin:8px 0 14px;color:var(--muted);font-size:.92rem}
+.medlist{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.medrow{display:grid;gap:10px;padding:14px;border-radius:16px;border:1.5px solid var(--line);background:#fff;transition:border-color .2s,background .2s}
+.medrow[data-status="taken"]{background:#F3FAF6;border-color:#BFDCCB}
+.medname{font-weight:700;font-size:1.05rem}
+.meddetail{color:var(--muted);font-size:.9rem}
+.medaction{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+/* the state button always shows a word ("pending" or "taken"), never just a color */
+.statebtn{min-height:46px;min-width:124px;padding:0 18px;border-radius:99px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:2px solid var(--amber);background:#FBE9D8;color:var(--amber-ink);transition:background .15s,transform .1s}
+.statebtn::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--amber)}
+.statebtn:hover:not([disabled]){background:#F6DABE}
+.statebtn:active:not([disabled]){transform:translateY(1px)}
+.statebtn[data-status="taken"]{border-color:var(--green);background:var(--green);color:#fff;cursor:default}
+.statebtn[data-status="taken"]::before{content:"\2713";width:auto;height:auto;background:none;font-size:1rem}
+.signline{font-family:var(--display);font-style:italic;color:#1F5B3C;font-size:.98rem}
+
+.timeline .node.glyph{font-family:var(--display);font-weight:700;font-size:1rem}
+.entry h3{margin-top:8px}
+.entry .details{margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere;color:#2E3445}
+.timeline li.is-new .entry{animation:itemArrive .4s ease both}
+@keyframes itemArrive{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+/* ---------- optional ai reflection on the patterns screen ---------- */
+.aibox{margin-top:14px;padding:16px;border-radius:14px;background:#fff;border:1.5px solid var(--line)}
+.aibox:focus{outline:none}
+.aibox p+p,.aibox p+ul,.aibox ul+p{margin-top:10px}
+.aibox h3{margin:14px 0 6px}
+/* ---------- ai results: important events, doctor prompt ---------- */
+.aibox .events li{list-style:none;padding:9px 12px;margin-bottom:8px;border-left:4px solid var(--amber);background:#FFF7E4;border-radius:8px}
+.aibox .events span{color:var(--muted);font-size:.92rem}
+.doctext{width:100%;margin-top:8px;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:.9rem/1.55 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+/* ---------- mood chart legend ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:6px 22px;list-style:none;margin:12px 0 0;padding:0;font-size:.92rem}
+.legend li{display:flex;align-items:center;gap:8px}
+/* ---------- shifts (handoff screen) ---------- */
+.live{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--green)}
+.live::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--green)}
+.shiftcard{background:#E6F0F2;border-color:#B9D3DA}
+.shiftcard.done{background:#E1EFE6;border-color:#B7D7C4}
+details.sh{border:1.5px solid var(--line);border-radius:14px;background:var(--card)}
+details.sh+details.sh{margin-top:10px}
+details.sh>summary{min-height:48px;padding:10px 14px;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;justify-content:space-between}
+details.sh>summary:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:12px}
+details.sh .shbody{padding:2px 14px 14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.note{transform:none}}
+@media print{.doctext{display:none!important}pre.printcopy{display:block;white-space:pre-wrap;font:11pt/1.45 ui-monospace,Menlo,Consolas,monospace}.side-nav,.tabs,.topbar,.btn,.toast{display:none!important}body{background:#fff}.main{padding:0}}
+</style>
+</head>
+<body>
+<a class="skip" href="#view">Skip to content</a>
+<div class="shell">
+  <aside class="side-nav" aria-label="Main">
+    <a class="brand" href="#/today" aria-label="CareThread home">
+      <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#2A6B7C"/><path d="M30.8 29.4C26.8 31.4 23.6 30.8 20 28.6C11.5 23.6 9.2 17.6 12.6 14C15.4 11.2 19 12.4 20 15.6C21 12.4 24.6 11.2 27.4 14C30.8 17.6 28.5 23.6 20 28.6" fill="none" stroke="#FFF7E4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30.8" cy="29.4" r="2.4" fill="#D4874E"/></svg>
+      <span><b>CareThread</b><small>shared care log</small></span>
+    </a>
+    <nav id="sidenav" aria-label="Screens"></nav>
+    <div class="whoami" id="whoami"></div>
+  </aside>
+  <div>
+    <header class="topbar">
+      <a class="brand" href="#/today" aria-label="CareThread home">
+        <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#2A6B7C"/><path d="M30.8 29.4C26.8 31.4 23.6 30.8 20 28.6C11.5 23.6 9.2 17.6 12.6 14C15.4 11.2 19 12.4 20 15.6C21 12.4 24.6 11.2 27.4 14C30.8 17.6 28.5 23.6 20 28.6" fill="none" stroke="#FFF7E4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30.8" cy="29.4" r="2.4" fill="#D4874E"/></svg>
+        <b>CareThread</b>
+      </a>
+      <a class="iconbtn" href="#/household" aria-label="Household settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3"/><path d="M5.5 19.5c.6-3.4 3-5.2 6.5-5.2s5.9 1.8 6.5 5.2"/></svg></a>
+    </header>
+    <main id="view" class="main" tabindex="-1"></main>
+  </div>
+</div>
+<nav class="tabs" id="tabs" aria-label="Screens"></nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/*
+   carethread: a care coordination app.
+   everything runs in this browser and saves to localstorage. the only things that can leave the device go to this site's own /api/care-insights: the optional ai reflection and the doctor visit prompt on the patterns screen (only when you press their buttons, both made by carecontext()) and the ai written "today's entries at a glance" (when today's entries change, see glancepayload()).
+   
+   order of this file:
+     1. helpers and word lists
+     2. starting data (2 people, 4 weeks of check-ins, 5 care logs each)
+     3. state, checking, and saving/loading localstorage
+     4. pattern analysis and charts
+     5. the 6 screens (today, handoff, log, patterns, profile, household)
+     6. render, routing and event handlers (every action: change state, save, redraw)
+*/
+(() => {
+'use strict';
+
+/* === small helpers === */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const pad = n => String(n).padStart(2, '0');
+const dayKey = d => { d = new Date(d); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const fmtTime = d => new Date(d).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+const fmtShort = d => new Date(d).toLocaleDateString([], {month:'short', day:'numeric'});
+const fmtLong = d => new Date(d).toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+const pct = (n, d) => d ? Math.round(100 * n / d) : 0;
+const plural = (n, w, p) => `${n} ${n === 1 ? w : (p || w + 's')}`;
+const initials = n => (n || '?').trim().charAt(0).toUpperCase();
+
+/* calendar day math, always in the viewer's own time zone */
+const MS_DAY = 86400000;
+const startOfDay = d => { const c = new Date(d); c.setHours(0, 0, 0, 0); return c; };
+const daysBetween = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / MS_DAY);   // rounding handles daylight saving
+/* "today", "yesterday", "1 week ago", "4 weeks ago", the little badge on the care timeline */
+const relDay = ts => { const n = daysBetween(ts, new Date()); if(n <= 0) return 'Today'; if(n === 1) return 'Yesterday'; const w = Math.ceil(n / 7); return w === 1 ? '1 week ago' : w + ' weeks ago'; };
+/* "8:00 pm" -> minutes after midnight (null if it can't be read) */
+const timeToMinutes = t => { const m = /(\d+):(\d+)\s*(AM|PM)/i.exec(String(t || '')); if(!m) return null; let h = +m[1] % 12; if(/pm/i.test(m[3])) h += 12; return h * 60 + +m[2]; };
+
+/* storage that still works if the browser blocks localstorage */
+const mem = {};
+const store = {
+  /* every write also keeps a copy in memory so the app keeps working for the visit even if the browser won't store anything */
+  get(k){ try { const v = localStorage.getItem(k); if(v !== null) return v; } catch {} return mem[k] ?? null; },
+  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); } catch {} },
+  del(k){ delete mem[k]; try { localStorage.removeItem(k); } catch {} }
+};
+
+/* === word lists === */
+const MOODS = {
+  1:{label:'Very hard', c:'#9B3B2E', bg:'#F6E3DE'},
+  2:{label:'Rough',     c:'#A05221', bg:'#F8E8D9'},
+  3:{label:'Okay',      c:'#6F6118', bg:'#F4EFD2'},
+  4:{label:'Good',      c:'#2F7050', bg:'#E1EFE6'},
+  5:{label:'Great',     c:'#1F6277', bg:'#DCEDF1'}
+};
+const BEHAVIORS = ['Calm','Happy','Anxious','Agitated','Confused','Restless','Overwhelmed','Withdrawn','Other'];
+const TRIGGERS  = ['Schedule change','Noise','Sleep disruption','Dietary change','Social interaction','Medical','Other'];
+const MOUTH = {
+  1:'M8 17.2Q12 12.4 16 17.2', 2:'M8.4 16.2Q12 13.6 15.6 16.2', 3:'M8.6 15.6H15.4',
+  4:'M8 14.2Q12 17.8 16 14.2', 5:'M7.4 13.4Q12 20.4 16.6 13.4Z'
+};
+const face = (m, s = 28) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.6"/><circle cx="9" cy="9.6" r=".6" fill="currentColor"/><circle cx="15" cy="9.6" r=".6" fill="currentColor"/><path d="${MOUTH[m]}" ${m === 5 ? 'fill="currentColor" fill-opacity=".18"' : ''}/></svg>`;
+const moodChip = m => `<span class="mood" style="--c:${MOODS[m].c};--bg:${MOODS[m].bg}">${face(m, 18)}${m} · ${MOODS[m].label}</span>`;
+
+const ICONS = {
+  today:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/>',
+  log:'<path d="M12 5v14M5 12h14"/>',
+  handoff:'<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/>',
+  profile:'<path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/>',
+  patterns:'<path d="M4 19V5M4 19h16"/><path d="m7.5 14 3.5-4 3 2.5 4.5-6"/>',
+  household:'<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.5-3.2 2.8-5 5.5-5s5 1.8 5.5 5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16 14.2c2.6-.3 4.5 1.3 5 4"/>'
+};
+const ico = (k, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
+
+/* kinds of care log entries on the care timeline: label, the letter in the round node, node color, chip tint, chip text color */
+const LOG_CATEGORIES = {
+  baseline:  {label:'Baseline',   glyph:'B',      c:'#2A6B7C', bg:'#DCEDF1', ink:'#1F5260'},
+  therapy:   {label:'Therapy',    glyph:'T',      c:'#6F5AA8', bg:'#E9E4F4', ink:'#54428C'},
+  medication:{label:'Medication', glyph:'M',      c:'#A05221', bg:'#F8E8D9', ink:'#8A4A17'},
+  nutrition: {label:'Nutrition',  glyph:'N',      c:'#3D7A5A', bg:'#E1EFE6', ink:'#1F5B3C'},
+  handoff:   {label:'Handoff',    glyph:'H',      c:'#D4874E', bg:'#FBE9D8', ink:'#8A4A17'},
+  signoff:   {label:'Sign-off',   glyph:'✓', c:'#3D7A5A', bg:'#E1EFE6', ink:'#1F5B3C'}
+};
+const MAX_HANDOFF = 600;
+
+/*
+   === starting data ===
+   two people in one household, made relative to today so the app always opens with the last 4 weeks filled in.
+   the generator has real cause and effect built in (bad sleep, visitors and schedule changes pull mood down, evenings are harder for peggy) so the patterns screen has real patterns to find. the insights are always calculated from the entries and never typed in.
+*/
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const JORDAN = {id:'u_jordan', name:'Jordan'}, DANA = {id:'u_dana', name:'Dana'}, LUIS = {id:'u_luis', name:'Luis'}, ROSA = {id:'u_rosa', name:'Rosa'};
+
+const PEGGY = () => ({
+  name:'Peggy', age:88,
+  diagnoses:['Alzheimer’s-type dementia (moderate to advanced)','High blood pressure','Osteoarthritis (hips and knees)'],
+  medications:[
+    {name:'Lisinopril', dose:'10 mg', when:'Morning', time:'8:00 AM'},
+    {name:'Memantine',  dose:'10 mg', when:'Morning', time:'8:00 AM'},
+    {name:'Donepezil',  dose:'5 mg',  when:'Evening', time:'8:00 PM'}
+  ],
+  triggers:['Late afternoon and early evening (sundowning)','Unfamiliar visitors or caregivers','Loud TV or crowded rooms','Being rushed during bathing and dressing','Missed or late meals'],
+  sensory:['Warm tea and her old jazz records','A night light in the hallway','Her photo album when she’s unsettled','Glasses and hearing aids in before anyone starts a conversation'],
+  doctors:[
+    {name:'Dr. Helen Brooks', role:'Geriatrician', phone:'(555) 010-0163'},
+    {name:'Dr. Raj Patel', role:'Primary care', phone:'(555) 010-0188'}
+  ],
+  emergency:'Fall risk: she uses a walker, so never leave her alone on the stairs. For a fall with a head strike or a sudden change in alertness, call 911 first, then Dana at (555) 010-0142. Spare hearing-aid batteries are in the hallway drawer.'
+});
+const THEO = () => ({
+  name:'Theo', age:15,
+  diagnoses:['Autism Spectrum Disorder (Level 2)','Sensory processing differences'],
+  medications:[
+    {name:'Risperidone', dose:'0.5 mg', when:'Morning', time:'7:30 AM'},
+    {name:'Melatonin',   dose:'3 mg',   when:'Evening', time:'8:30 PM'}
+  ],
+  triggers:['Loud unexpected noises','Schedule changes without warning','Transitions between activities','Crowded environments'],
+  sensory:['Dim lighting in the evening','A weighted blanket for sleep','Fidget tools during transitions'],
+  doctors:[
+    {name:'Dr. Elena Park', role:'Developmental pediatrician', phone:'(555) 010-0142'},
+    {name:'Dr. Sam Okafor', role:'Psychiatry (medication review)', phone:'(555) 010-0177'}
+  ],
+  emergency:'If Theo is unsafe or in distress beyond the usual plan, call 911 first, then Dana at (555) 010-0142. His quiet space is the upstairs back bedroom.'
+});
+
+const GEN = {
+  peggy:{
+    /*
+       written to match what the care timeline and today's entries already say about peggy: mostly calm and bright days, tea and jazz records, mild confusion that the photo album settles, a bit of restlessness as the light fades and no night wandering (night light is on by 8:30).
+       donepezil moved to the evening on oct 15 to help daytime drowsiness so earlier mornings are a little low. the nutrition targets from oct 22 come with "brighter afternoons". hard days and incidents are few and mostly mild.
+    */
+    seed:88042, authors:[DANA, JORDAN, LUIS], altAuthor:ROSA, altEve:0.3, threeP:1, era:true, sev2:0.35, sevTop:1,       // low mood check-ins are logged as mild or moderate incidents, never serious
+    onlyForced:true, missed:[
+      {m:9, d:4, idx:0, note:'Morning medication was missed. The organizer had been moved to a different drawer and nobody noticed until after breakfast. Told Jordan so the next shift watches for it.'},
+      {m:9, d:9, idx:0, note:'Morning medication missed again. The aide arrived late and the 8:00 doses were missed. Flagged for the next shift and asked the household to sign off every dose.'}
+    ],
+    base:4.0, wkBonus:0.2, sleepP:0.11, schedWk:0.13, schedWe:0.05, noiseP:0.08, medicalP:0.03,
+    sleepW:1.3, schedW:0.9, noiseW:0.45, medicalW:0.9, eveningDip:0.5, medsP:[0.97, 0.98, 0.95],
+    low:['Confused','Anxious','Restless','Withdrawn'], mid:['Confused','Calm','Restless'],
+    N:{
+      sleep:['Said she slept poorly and woke twice. Slow to get going this morning, so we took breakfast gently.','Tired at breakfast after a restless night by her account. Ate most of her oatmeal.','Didn’t sleep well and was a little vague until after her tea.'],
+      sched:['The aide came at a different time than usual and she kept asking who was coming. Settled once we went over the day together.','Appointment ran long and lunch was late. She got irritable until she had tea.','Plans changed at the last minute. She got anxious and kept asking what was next.'],
+      noise:['A loud TV next door upset her. Moved to the back room with her jazz records and she calmed down.','A noisy delivery at the door startled her. Sat with her and she settled after a few minutes.'],
+      medical:['Sore hip when standing. Gave her usual pain plan and watched her walk.','A little more tired than usual. Kept an eye on her and encouraged fluids.'],
+      drowsy:['Drowsy after her morning medication and slow to wake. Let her rest before breakfast.','Sleepy through the morning and quiet at breakfast. A short walker lap helped later.'],
+      sundown:['Got a little restless as the light faded and asked about going home. Sat with her until she settled.','Tired and a bit vague toward evening. Kept the hallway night light on and the room quiet.'],
+      social:['Asked where her husband was and got teary. Looked through the photo album and she settled after a few minutes.','Had a visitor and seemed unsure who it was. Tea and the photo album helped her feel at ease.'],
+      diet:['Ate less than usual at the new breakfast. Tea and toast later went down fine.'],
+      good:['Slept well and ate a full breakfast. Chatty about her garden.','Calm afternoon with tea and her jazz records.','Good appetite and a short walk with the walker. In a lovely mood.','Hummed along to a record and smiled a lot. Ate well at lunch.'],
+      ok:['Quiet and a little vague, but cooperative.','Needed a few reminders about the day but stayed calm.']
+    }
+  },
+  theo:{
+    /*
+       written to match theo's care timeline and today's entries: structured school days with a picture schedule, headphones and fidget tools, and a few hard moments around surprise changes, loud noises and visitors that settle with quiet time.
+       melatonin moved earlier on oct 15 to help him wind down so earlier mornings are a little low. the oct 22 nutrition targets come with "steadier after school". incidents are few and mild.
+    */
+    seed:15207, authors:[DANA, JORDAN, LUIS], altAuthor:ROSA, altEve:0.15, threeP:0.85, era:true, sev2:0.35, sevTop:1, onlyForced:true,
+    base:3.9, wkBonus:0.45, sleepP:0.12, schedWk:0.17, schedWe:0.05, noiseP:0.10, medicalP:0,
+    sleepW:1.2, schedW:1.0, noiseW:0.5, medicalW:0, eveningDip:0, medsP:[0.95, 0.97, 0.97],
+    low:['Agitated','Overwhelmed','Anxious','Withdrawn'], mid:['Anxious','Calm','Withdrawn'],
+    N:{
+      sleep:['Said he was up a couple of times in the night. Slow to wake and quiet at breakfast.','Didn’t sleep well by his account. Needed extra time getting dressed but made the bus.','Tired this morning after a restless night. Headphones on until breakfast.'],
+      sched:['Pickup time moved and he wasn’t told ahead of time. Paced for a while until the picture schedule was updated.','Substitute teacher and a different bus. Came home wound tight and spent time in his room with his headphones.','An appointment ran long and plans changed. Hard transition; he needed space and the two-minute warning helped.'],
+      noise:['Leaf blower next door set him off. Headphones helped after about 10 minutes.','Fire drill at school. Jumpy for the rest of the afternoon, settled with quiet time.'],
+      medical:['Stomach ache, skipped lunch.'], sundown:[],
+      drowsy:['Slow to wake and a bit foggy at breakfast. Took extra time getting dressed.','Quiet and tired in the morning. Ate less than usual but made the bus.'],
+      social:['A visitor came by without warning. He went to his room with his fidget tools and was back to himself after a while.'],
+      diet:['Tried a new food at dinner and ate only a little. Went back to his usual after.'],
+      good:['Smooth morning. Ate a full breakfast and got on the bus without fuss.','Calm afternoon. Did his puzzle and used fidget tools during the switch to homework.','Good evening: dim lights, weighted blanket, in bed on time.','Helped set the table and laughed at a video with Jordan. Steady all day.','Routine went exactly to plan. Easy transitions.'],
+      ok:['Okay day, a little quiet but cooperative.','Some restlessness but he redirected with his fidgets.']
+    }
+  }
+};
+
+function genHistory(rid, P){
+  const rnd = mulberry32(P.seed), pick = a => a[Math.floor(rnd() * a.length)];
+  const out = [], today = new Date(); today.setHours(0, 0, 0, 0);
+  const era = P.era ? {medChange:buildPastDate(9, 15, 9).getTime(), nutrition:buildPastDate(9, 22, 18).getTime()} : null;   // dates from the care timeline
+  for(let i = 27; i >= 1; i--){
+    const date = new Date(today); date.setDate(date.getDate() - i);
+    const dow = date.getDay(), we = dow === 0 || dow === 6;
+    const sleepBad = rnd() < P.sleepP, sched = rnd() < (we ? P.schedWe : P.schedWk), noise = rnd() < P.noiseP, medical = rnd() < P.medicalP;
+    const base = P.base + (we ? P.wkBonus : 0) - P.sleepW * sleepBad - P.schedW * sched - P.noiseW * noise - P.medicalW * medical;
+    const bad = sleepBad || sched || medical;
+    const n = rnd() < P.threeP ? 3 : 2;
+    const slots = [[8, 10 + Math.floor(rnd() * 30), P.authors[0]], [15, 20 + Math.floor(rnd() * 35), P.authors[1]], [19, 40 + Math.floor(rnd() * 15), rnd() < P.altEve ? P.altAuthor : P.authors[2]]].slice(0, n);
+    slots.forEach(([h, m, by], idx) => {
+      const eraAdj = era ? (idx === 0 && date.getTime() < era.medChange ? -0.4 : idx === 1 && date.getTime() >= era.nutrition ? 0.4 : 0) : 0;   // drowsy mornings before the medication change, brighter afternoons after the nutrition targets
+      const mood = clamp(Math.round(base - (idx === 2 ? P.eveningDip : 0) + eraAdj + (rnd() - 0.5) * 1.3), 1, 5);
+      const trig = [];
+      if(sleepBad && idx === 0) trig.push('Sleep disruption');
+      if(sched && (idx === 1 || (idx === 0 && rnd() < 0.4))) trig.push('Schedule change');
+      if(noise && idx === 1) trig.push('Noise');
+      if(medical && idx <= 1) trig.push('Medical');
+      if(rnd() < 0.04) trig.push(pick(['Dietary change', 'Social interaction']));
+      let beh;
+      if(mood <= 2) beh = [pick(P.low)]; else if(mood === 3) beh = [pick(P.mid)]; else beh = [pick(['Calm', 'Happy'])];
+      if(mood === 5) beh = ['Happy', 'Calm'];
+      let note;
+      if(trig.includes('Sleep disruption')) note = pick(P.N.sleep);
+      else if(trig.includes('Schedule change')) note = pick(P.N.sched);
+      else if(trig.includes('Noise')) note = pick(P.N.noise);
+      else if(P.N.social && trig.includes('Social interaction')) note = pick(P.N.social);
+      else if(P.N.diet && trig.includes('Dietary change')) note = pick(P.N.diet);
+      else if(trig.includes('Medical') && P.N.medical.length) note = pick(P.N.medical);
+      else if(P.N.drowsy && era && idx === 0 && mood <= 3 && date.getTime() < era.medChange) note = pick(P.N.drowsy);
+      else if(idx === 2 && mood <= 3 && P.N.sundown.length) note = pick(P.N.sundown);
+      else note = mood >= 4 ? pick(P.N.good) : pick(P.N.ok);
+      const rm = rnd() < P.medsP[idx];
+      /* missed doses only happen on the dates the care timeline talks about (p.missed), never random, so every flagged record has a story behind it */
+      const forced = (P.missed || []).find(x => x.idx === idx && date.getMonth() === x.m && date.getDate() === x.d);
+      const meds = forced ? false : (P.onlyForced ? true : rm);
+      if(forced) note = forced.note;
+      const routine = rnd() < (bad ? 0.55 : 0.95);
+      const severity = mood <= 2 ? (rnd() < (P.sev2 ?? 0.5) ? 2 : (P.sevTop ?? 3)) : (mood === 3 && trig.length && rnd() < 0.35 ? 1 : 0);
+      const d = new Date(date); d.setHours(h, m, 0, 0);
+      out.push({id:uid('e'), rid, ts:d.toISOString(), by:by.id, byName:by.name, mood, meds, routine, behaviors:beh, triggers:trig, notes:note, severity});
+    });
+  }
+  return out;
+}
+/* today's entries are placed relative to the current time so they are never in the future */
+function genToday(rid, specs){
+  const now = new Date(), midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const floor = midnight.getTime() + 5 * 60000;
+  return specs.map(([minsAgo, order, by, f]) => Object.assign({id:uid('e'), rid, ts:new Date(Math.max(now.getTime() - minsAgo * 60000, floor + order * 12 * 60000)).toISOString(), by:by.id, byName:by.name, severity:0}, f));
+}
+
+/*
+   ---------- the 5 care logs for each person ----------
+   oct 1 care baseline, oct 8 therapy goals, oct 15 medication change, oct 22 nutrition and hydration targets, and today's active shift handoff.
+   the dates are real calendar dates, and if one would be in the future (app opened before oct 1) it uses last year so the history is always in the past.
+*/
+function buildPastDate(monthIndex, dayOfMonth, hour){
+  const now = new Date();
+  let d = new Date(now.getFullYear(), monthIndex, dayOfMonth, hour, 0, 0, 0);
+  if(d.getTime() > now.getTime()) d = new Date(now.getFullYear() - 1, monthIndex, dayOfMonth, hour, 0, 0, 0);
+  return d;
+}
+const careLog = (id, when, cat, title, details, highlights, by) => ({id, ts:when.toISOString(), cat, title, details, highlights, by:by.id, byName:by.name});
+
+function peggyCareLogs(){
+  return [
+    careLog('log_peggy_baseline', buildPastDate(9, 1, 9), 'baseline', 'Care baseline and daily routine established',
+      'Set Peggy’s weekday rhythm so every caregiver follows the same plan: wake and wash-up at 7:00, breakfast and morning medications at 8:00, a short walker lap before lunch, a quiet afternoon with tea and her jazz records, and the hallway night light on by 8:30 in the evening.',
+      ['Wake 7:00 AM', 'Breakfast and medications 8:00 AM', 'Night light on by 8:30 PM'], DANA),
+    careLog('log_peggy_therapy', buildPastDate(9, 8, 10), 'therapy', 'Physical therapy movement benchmarks updated',
+      'After this week’s session the therapist raised Peggy’s goals. She now walks six hallway laps with her walker, up from four, and manages five sit-to-stand repeats with light support. Next review is in two weeks.',
+      ['Hallway laps: 4 to 6', 'Sit-to-stand: 5 reps', 'Review in two weeks'], JORDAN),
+    careLog('log_peggy_medication', buildPastDate(9, 15, 9), 'medication', 'Medication schedule adjustment logged',
+      'Dr. Brooks moved Donepezil to 8:00 PM to ease daytime drowsiness. Lisinopril and Memantine stay with breakfast at 8:00 AM. After the mix-ups on Oct 4 and Oct 9, every dose now gets signed off in the tracker so nothing is doubled or lost track of.',
+      ['Donepezil moved to 8:00 PM', 'Lisinopril and Memantine stay at 8:00 AM', 'Every dose signed off in the tracker'], DANA),
+    careLog('log_peggy_nutrition', buildPastDate(9, 22, 18), 'nutrition', 'Nutrition and hydration targets met',
+      'First full week hitting every target: six glasses of water a day, protein at breakfast, and both snacks eaten. Peggy’s appetite is steady and she has been brighter in the afternoons.',
+      ['6 glasses of water daily', 'Protein at breakfast', 'Both snacks eaten'], LUIS),
+    careLog('log_peggy_today', new Date(), 'handoff', 'Active shift handoff',
+      'Calm morning. Peggy slept through the night, ate oatmeal and half a banana, and walked to the kitchen on her own. Around lunch she asked twice where her husband was; the photo album and a cup of tea settled her within fifteen minutes. Next up is Donepezil at 8:00 PM. Keep the hallway night light on and expect some restlessness as the light fades.',
+      ['Slept through the night', 'Photo album and tea calm her', 'Donepezil at 8:00 PM'], JORDAN),
+    /* the two missed mornings are also check-in entries on the same dates (see gen.peggy.missed) so the timeline, the entries and the flagged list all tell one story */
+    careLog('log_peggy_missed1', buildPastDate(9, 4, 9), 'medication', 'Morning medication missed',
+      'The 8:00 doses of Lisinopril and Memantine were missed. The organizer had been moved to a different drawer and nobody noticed until after breakfast. Jordan will watch for it on the next shift.',
+      ['Morning doses not given', 'Organizer in the wrong drawer'], DANA),
+    careLog('log_peggy_missed2', buildPastDate(9, 9, 9), 'medication', 'Morning medication missed again',
+      'The aide arrived late and the 8:00 doses of Lisinopril and Memantine were missed again. Flagged for the next shift and raised with the household: every dose should be signed off.',
+      ['Morning doses not given', 'Aide arrived late', 'Sign-off proposed'], DANA)
+  ];
+}
+function theoCareLogs(){
+  return [
+    careLog('log_theo_baseline', buildPastDate(9, 1, 9), 'baseline', 'Care baseline and daily routine established',
+      'Wrote down Theo’s school-day rhythm so every caregiver follows the same plan: up at 6:45, breakfast and Risperidone at 7:30, bus at 7:50 with the picture schedule on the fridge, headphone time to decompress after school, homework with fidget tools at 4:30, dinner at 6:00, and lights low after 7:30.',
+      ['Picture schedule on the fridge', 'Quiet time after school', 'Lights low after 7:30 PM'], DANA),
+    careLog('log_theo_therapy', buildPastDate(9, 8, 10), 'therapy', 'Therapy transition and communication benchmarks updated',
+      'After this week’s session his therapist raised Theo’s goals. He now handles a two-minute warning with the visual timer, up from one minute, and uses his break card without a prompt most afternoons. Next review is in two weeks.',
+      ['Two-minute warnings with the timer', 'Break card used without prompts', 'Review in two weeks'], JORDAN),
+    careLog('log_theo_medication', buildPastDate(9, 15, 9), 'medication', 'Medication schedule adjustment logged',
+      'Dr. Okafor moved Melatonin from 9:00 PM to 8:30 PM so Theo can wind down earlier. Risperidone stays with breakfast at 7:30 AM. From now on every dose gets signed off in the tracker so nothing is doubled or missed.',
+      ['Melatonin moved to 8:30 PM', 'Risperidone stays at 7:30 AM'], DANA),
+    careLog('log_theo_nutrition', buildPastDate(9, 22, 18), 'nutrition', 'Nutrition and hydration targets met',
+      'First full week hitting every target: water bottle refilled twice a day, protein at breakfast, and one new food tried. Scrambled egg worked once the plate was divided so nothing touches. He has been steadier after school.',
+      ['Water bottle refilled twice daily', 'Protein at breakfast', 'New food: scrambled egg'], LUIS),
+    careLog('log_theo_today', new Date(), 'handoff', 'Active shift handoff',
+      'Smooth morning. Theo ate a full breakfast and caught the bus without fuss. A neighbor stopped by unannounced this afternoon and he went to his room with his fidget tools; he was back to himself after about fifteen minutes. Melatonin is due at 8:30 tonight, so keep the lights low after dinner and give him a two-minute warning before bedtime.',
+      ['Neighbor visit: 15 minutes of quiet', 'Melatonin at 8:30 PM', 'Two-minute warning before bed'], JORDAN)
+  ];
+}
+const noteFromLog = l => ({text:l.details, by:l.by, byName:l.byName, ts:l.ts, highlights:l.highlights.slice(), logId:l.id});
+
+/* a dose is found by its name + time so it survives edits to the rest of the profile */
+const medKey = m => (m.name + '|' + m.time).toLowerCase();
+/* morning doses that are already past due when the app first opens start as signed off by the morning caregiver, and evening doses start pending. (no timeline entry is made for these so each person starts with exactly 5 logs) */
+function seedDoses(profile, morningBy, now){
+  const done = {}, midnight = startOfDay(now).getTime(), nowMin = now.getHours() * 60 + now.getMinutes();
+  profile.medications.forEach(m => {
+    const due = timeToMinutes(m.time);
+    if(/morning/i.test(m.when) && due !== null && due + 4 < nowMin){
+      done[medKey(m)] = {by:morningBy.id, byName:morningBy.name, at:new Date(midnight + (due + 4) * 60000).toISOString(), logId:null};
+    }
+  });
+  return {day:dayKey(now), done};
+}
+
+function seedState(){
+  const peggyId = 'r_peggy', theoId = 'r_theo', now = new Date();
+  const entries = [
+    ...genHistory(peggyId, GEN.peggy),
+    ...genToday(peggyId, [
+      [330, 0, DANA,   {mood:4, meds:true, routine:true, behaviors:['Calm'], triggers:[], notes:'Slept through until 7. Ate oatmeal and half a banana, walked to the kitchen with her walker on her own. Lisinopril and memantine given at 8.'}],
+      [150, 1, JORDAN, {mood:3, meds:true, routine:true, behaviors:['Confused','Anxious'], triggers:['Social interaction'], severity:1, notes:'Asked twice where her husband was and got teary. We looked through the photo album and she settled after about 15 minutes. Tea and her jazz records helped.'}],
+      [35,  2, LUIS,   {mood:4, meds:true, routine:true, behaviors:['Calm','Happy'], triggers:[], notes:'Good appetite at the last meal and she’s humming along to a record. Donepezil is due at 8 tonight. Hallway night light is on.'}]
+    ]),
+    ...genHistory(theoId, GEN.theo),
+    ...genToday(theoId, [
+      [320, 0, DANA,   {mood:4, meds:true, routine:true, behaviors:['Calm'], triggers:[], notes:'Up on time, full breakfast. Risperidone given at 7:30. School routine went smoothly, no fuss at the bus.'}],
+      [140, 1, JORDAN, {mood:3, meds:true, routine:true, behaviors:['Anxious'], triggers:['Social interaction'], severity:1, notes:'A neighbor stopped by unannounced. Theo got anxious and went to his room with his fidget tools. Settled after about 15 minutes of quiet.'}],
+      [30,  2, LUIS,   {mood:4, meds:true, routine:true, behaviors:['Calm','Happy'], triggers:[], notes:'Back to himself and chatty. Melatonin is due at 8:30 tonight, lights low after dinner.'}]
+    ])
+  ];
+  const recipients = [{id:peggyId, profile:PEGGY()}, {id:theoId, profile:THEO()}];
+  const peggyLogs = peggyCareLogs(), theoLogs = theoCareLogs();
+  return {
+    v:3,
+    household:{
+      name:'The Hartwell Household', code:'CARE-4829',
+      members:[
+        {id:'u_jordan', name:'Jordan', role:'admin'},
+        {id:'u_dana',   name:'Dana',   role:'admin'},
+        {id:'u_luis',   name:'Luis',   role:'caregiver'},
+        {id:'u_rosa',   name:'Rosa',   role:'caregiver'}
+      ]
+    },
+    recipients, rid:peggyId,
+    entries, shifts:{}, shiftLog:[],                                            // shifts: the one active shift per person. shiftlog: finished shifts
+    touched:{},                                                                // people whose records a caregiver changed since the starting data (then the doctor report updates itself)
+    carelogs:{[peggyId]:peggyLogs, [theoId]:theoLogs},                         // the 5 care logs per person
+    notes:{[peggyId]:noteFromLog(peggyLogs[4]), [theoId]:noteFromLog(theoLogs[4])},   // the active handoff note starts as the "today" log
+    doses:{[peggyId]:seedDoses(recipients[0].profile, DANA, now), [theoId]:seedDoses(recipients[1].profile, DANA, now)},
+    me:'u_jordan',
+    reminders:{meds:true, log:true}
+  };
+}
+
+/*
+   === state, checking, saving ===
+   the saved json is checked field by field before it is trusted, so a broken or hand edited save can never crash a screen. it goes back to the starting data instead.
+*/
+const KEY = 'carethread.local.v3';
+let state;
+
+const isStr = v => typeof v === 'string';
+const isTs = v => isStr(v) && !isNaN(new Date(v).getTime());
+const isStrList = v => Array.isArray(v) && v.every(isStr);
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+function validProfile(p){
+  return isObj(p) && isStr(p.name) && (typeof p.age === 'number' || p.age === '') && isStrList(p.diagnoses) && isStrList(p.triggers) && isStrList(p.sensory) && isStr(p.emergency) &&
+    Array.isArray(p.medications) && p.medications.every(m => isObj(m) && isStr(m.name) && isStr(m.dose) && isStr(m.when) && isStr(m.time)) &&
+    Array.isArray(p.doctors) && p.doctors.every(d => isObj(d) && isStr(d.name) && isStr(d.role) && isStr(d.phone));
+}
+function validEntry(e){
+  return isObj(e) && isStr(e.id) && isStr(e.rid) && isTs(e.ts) && isStr(e.by) && isStr(e.byName) && Number.isInteger(e.mood) && !!MOODS[e.mood] &&
+    typeof e.meds === 'boolean' && typeof e.routine === 'boolean' && isStrList(e.behaviors) && isStrList(e.triggers) && typeof e.severity === 'number' && isStr(e.notes);
+}
+const validCareLog = l => isObj(l) && isStr(l.id) && isTs(l.ts) && !!LOG_CATEGORIES[l.cat] && isStr(l.title) && isStr(l.details) && isStrList(l.highlights) && isStr(l.by) && isStr(l.byName);
+const validNote = n => isObj(n) && isStr(n.text) && isStr(n.byName) && isTs(n.ts) && isStrList(n.highlights);
+const validDoses = d => isObj(d) && isStr(d.day) && isObj(d.done) && Object.values(d.done).every(r => isObj(r) && isStr(r.by) && isStr(r.byName) && isTs(r.at));
+function validState(s){
+  if(!isObj(s) || s.v !== 3) return false;
+  const h = s.household;
+  if(!isObj(h) || !isStr(h.name) || !isStr(h.code) || !Array.isArray(h.members) || !h.members.length) return false;
+  if(!h.members.every(m => isObj(m) && isStr(m.id) && isStr(m.name) && (m.role === 'admin' || m.role === 'caregiver'))) return false;
+  if(!Array.isArray(s.recipients) || !s.recipients.length || !s.recipients.every(r => isObj(r) && isStr(r.id) && validProfile(r.profile))) return false;
+  if(!Array.isArray(s.entries) || !s.entries.every(validEntry)) return false;
+  if(!isObj(s.carelogs) || !Object.values(s.carelogs).every(a => Array.isArray(a) && a.every(validCareLog))) return false;
+  if(!isObj(s.notes) || !Object.values(s.notes).every(validNote)) return false;
+  if(!isObj(s.doses) || !Object.values(s.doses).every(validDoses)) return false;
+  if(!isObj(s.shifts) || !Object.values(s.shifts).every(x => isObj(x) && isStr(x.name) && isTs(x.at))) return false;
+  return isStr(s.rid) && isStr(s.me) && isObj(s.reminders);
+}
+/* shift fields were added after the first version. old saves have no shiftlog and their "on shift" marker has no id. fill the gaps without making anything up (start times are never invented) and without failing the whole save. */
+const validDoneShift = x => isObj(x) && isStr(x.sid) && isStr(x.rid) && isStr(x.id) && isStr(x.name) && isTs(x.at) && isTs(x.end) && (x.endedBy === undefined || isStr(x.endedBy));
+function normalizeShifts(s){
+  s.shiftLog = Array.isArray(s.shiftLog) ? s.shiftLog.filter(validDoneShift) : [];
+  s.touched = isObj(s.touched) ? Object.fromEntries(Object.entries(s.touched).filter(([, v]) => v === true)) : {};
+  const known = new Set(s.recipients.map(r => r.id));
+  for(const rid of Object.keys(s.shifts)){
+    const sh = s.shifts[rid];
+    if(!known.has(rid)){ delete s.shifts[rid]; continue; }
+    if(!isStr(sh.sid)) sh.sid = 'sh_old_' + new Date(sh.at).getTime().toString(36);
+    if(!isStr(sh.id)) sh.id = '';
+    sh.rid = rid; sh.status = 'active';
+  }
+  s.entries.forEach(e => { if('shift' in e && !isStr(e.shift)) delete e.shift; });
+}
+/* load order: saved data if it exists and passes the check, otherwise null (then the starting data is used) */
+function loadState(){
+  const raw = store.get(KEY);
+  if(!raw) return null;
+  try {
+    const s = JSON.parse(raw);
+    if(validState(s)){ normalizeShifts(s); return s; }
+    console.warn('CareThread: saved data had an unexpected shape, so the starting data was restored.');
+  } catch(e){ console.warn('CareThread: saved data could not be read, so the starting data was restored.'); }
+  return null;
+}
+const save = () => store.set(KEY, JSON.stringify(state));
+
+/* getters that keep "who am i" and "who am i caring for" in one place */
+const me = () => state.household.members.find(m => m.id === state.me) || state.household.members[0];
+const isAdmin = () => me().role === 'admin';
+const R = () => state.recipients.find(r => r.id === state.rid) || state.recipients[0];
+const prof = () => R().profile;
+const entriesR = () => state.entries.filter(e => e.rid === R().id);
+const entriesFor = key => entriesR().filter(e => dayKey(e.ts) === key).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+const todayKey = () => dayKey(new Date());
+const canEdit = e => isAdmin() || e.by === me().id;
+const careLogsR = () => (state.carelogs[R().id] ||= []);
+const noteR = () => state.notes[R().id] || null;
+
+/* today's medication sign-offs. if the saved day isn't today every dose starts as pending again (the timeline keeps yesterday's sign-offs as history). */
+function dosesR(){
+  const id = R().id;
+  if(!state.doses[id] || state.doses[id].day !== todayKey()) state.doses[id] = {day:todayKey(), done:{}};
+  return state.doses[id];
+}
+function rollDoses(){
+  let changed = false;
+  state.recipients.forEach(r => { const d = state.doses[r.id]; if(d && d.day !== todayKey()){ state.doses[r.id] = {day:todayKey(), done:{}}; changed = true; } });
+  return changed;
+}
+const canUndoDose = rec => isAdmin() || rec.by === me().id;
+
+state = loadState() || seedState();
+rollDoses();
+save();
+
+/* === handoff summary (worked out here from today's entries, no internet) === */
+function localSummary(es){
+  const p = prof(), name = p.name;
+  if(!es.length) return `Nothing has been logged for ${name} yet today. Check in with whoever was with ${name} last before you start.`;
+  const m = avg(es.map(e => e.mood));
+  const first = es[0], last = es[es.length - 1];
+  const parts = [];
+  const tone = m >= 4 ? 'a good day so far' : m >= 3 ? 'a fairly steady day so far' : m >= 2.2 ? 'a bumpy day so far' : 'a hard day so far';
+  parts.push(es.length > 1 && first.mood !== last.mood
+    ? `${name} is having ${tone}; mood has gone from ${MOODS[first.mood].label.toLowerCase()} to ${MOODS[last.mood].label.toLowerCase()} across ${plural(es.length, 'check-in')}.`
+    : `${name} is having ${tone}.`);
+  const medMiss = es.filter(e => !e.meds).length, routMiss = es.filter(e => !e.routine).length;
+  if(medMiss) parts.push(`Heads up: medications were marked as not given in ${plural(medMiss, 'entry', 'entries')}, so double-check before the next dose.`);
+  else parts.push('Medications have been logged as given.');
+  if(routMiss) parts.push(`The routine got disrupted in ${plural(routMiss, 'entry', 'entries')}.`);
+  const inc = es.filter(e => e.severity > 0);
+  if(inc.length){
+    const worst = inc.reduce((a, b) => b.severity > a.severity ? b : a);
+    const snip = (worst.notes || '').split(/(?<=[.!?])\s/)[0] || '';
+    parts.push(`There ${inc.length === 1 ? 'was one incident' : `were ${inc.length} incidents`} logged${snip ? ` (${worst.byName} noted: ${snip.replace(/\.$/, '')})` : ''}.`);
+  } else {
+    const trig = [...new Set(es.flatMap(e => e.triggers))];
+    if(trig.length) parts.push(`Things that got in the way: ${trig.join(', ').toLowerCase()}.`);
+  }
+  if(last.mood <= 2) parts.push(`${name} was still having a rough time at the last check-in, so start with quiet time and low demands.`);
+  else if(es.some(e => e.triggers.includes('Sleep disruption')) && p.sensory[0]) parts.push(`Watch for another rough night; ${p.sensory[0].charAt(0).toLowerCase() + p.sensory[0].slice(1)} tends to help.`);
+  else {
+    const evening = p.medications.find(x => /evening|night|bed/i.test(x.when));
+    parts.push(evening ? `Next up: ${evening.name} around ${evening.time}.` : 'Nothing else to flag right now.');
+  }
+  return parts.slice(0, 5).join(' ');
+}
+
+/* === layer 2: pattern analysis (all calculated from the entries) === */
+/* triggers a caregiver wrote about in a note but didn't tick. only careful phrases, and a phrase after "no", "not" or "without" is ignored so "no loud noises" never counts as noise. they are counted with the ticked triggers, and anywhere a total shows it says how many came from notes. */
+const NOTE_TRIGGERS = [
+  ['Sleep disruption', /\b(?:didn.?t sleep|did not sleep|barely slept|no sleep|poor sleep|slept (?:poorly|badly|very little)|bad night|rough night|restless night|up (?:all night|(?:\w+ )?times? (?:overnight|in the night|during the night)|twice (?:overnight|in the night))|awake (?:all|most of the) night|couldn.?t sleep|trouble (?:sleeping|falling asleep)|woke (?:up )?(?:at \d|every|several|often|multiple|early)|sleep disruption|insomnia)/gi],
+  ['Schedule change', /\b(?:schedule (?:change|changed|was changed|shift)|routine (?:was )?(?:change|changed|disrupted|different)|(?:time|pickup|pick-up|plans?|appointment|bus|visit|meal|lunch|dinner)(?: time)? (?:was |were )?(?:moved|changed|delayed|rescheduled|cancel+ed)|ran (?:long|late|over)|different (?:time|bus|teacher|aide|caregiver|route|schedule)|substitute|last.?minute|rescheduled|unexpected change|without (?:warning|notice)|wasn.?t told (?:ahead|in advance))/gi],
+  ['Noise', /\b(?:noise|noisy|loud|leaf blower|construction|fire drill|siren|fireworks|thunder|barking|drilling|jackhammer)/gi],
+  ['Social interaction', /\b(?:visitors?|stopped by|came by|unannounced|unexpected (?:guest|visit)|guests?|company (?:came|over)|neighbou?r (?:stopped|came|visited)|relatives? (?:came|visited))/gi],
+  ['Medical', /\b(?:sore|pain|grimac\w*|stomach ?ache|headache|fever|warm to the touch|a little warm|infection|nausea|nauseous|vomit\w*|dizzy|rash|cough\w*|nurse line|urgent care|doctor visit|saw the doctor|called the doctor)/gi]
+];
+const NEGATED = /(?:\b(?:no|not|never|without|none|nor|free of)\b|n['’]t\b)[^.!?;,]{0,22}$/i;
+function noteTriggers(text){
+  const t = String(text || ''), out = [];
+  for(const [label, re] of NOTE_TRIGGERS){
+    re.lastIndex = 0; let m;
+    while((m = re.exec(t))){ if(!NEGATED.test(t.slice(Math.max(0, m.index - 28), m.index))){ out.push(label); break; } }
+  }
+  return out;
+}
+/* every trigger an entry shows: the ticked ones plus any its note describes. "noted" lists the ones only the note had. */
+function triggersOf(e){ const noted = noteTriggers(e.notes).filter(t => !e.triggers.includes(t)); return {all:[...e.triggers, ...noted], noted}; }
+
+function dayStats(days){
+  const cutoff = new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate() - (days - 1));
+  const by = {};
+  entriesR().forEach(e => { const d = new Date(e.ts); if(d >= cutoff){ (by[dayKey(d)] ||= []).push(e); } });
+  return Object.keys(by).sort().map(k => {
+    const es = by[k], d = new Date(k + 'T12:00:00'), dow = d.getDay(), tr = es.map(triggersOf);
+    const has = (label, ticked) => tr.some((t, i) => (ticked ? es[i].triggers : t.all).includes(label));
+    return {
+      key:k, date:d, n:es.length, avg:avg(es.map(e => e.mood)),
+      sleep:has('Sleep disruption'), sched:has('Schedule change'), noise:has('Noise'),
+      /* this day only counts because of a note, nobody ticked the trigger that day */
+      sleepNote:has('Sleep disruption') && !has('Sleep disruption', true), schedNote:has('Schedule change') && !has('Schedule change', true), noiseNote:has('Noise') && !has('Noise', true),
+      triggers:tr.flatMap(t => t.all), notedTriggers:tr.flatMap(t => t.noted),
+      medsOk:es.filter(e => e.meds).length, incidents:es.filter(e => e.severity > 0).length,
+      weekend:dow === 0 || dow === 6, es
+    };
+  });
+}
+/* how many times each trigger shows up across the days, and how many of those only came from notes */
+function triggerCounts(ds){
+  const all = {}, noted = {};
+  ds.forEach(d => { d.triggers.forEach(t => all[t] = (all[t] || 0) + 1); d.notedTriggers.forEach(t => noted[t] = (noted[t] || 0) + 1); });
+  return {all, noted, ranked:Object.entries(all).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])), fromNotes:Object.values(noted).reduce((a, b) => a + b, 0)};
+}
+const isHard = d => d.avg <= 2.5;
+function ratioInsight(ds, flag, label, id){
+  const w = ds.filter(d => d[flag]), wo = ds.filter(d => !d[flag]);
+  if(w.length < 2 || wo.length < 2) return null;
+  const hw = w.filter(isHard).length, ho = wo.filter(isHard).length;
+  const rw = hw / w.length, ro = ho / wo.length;
+  if(hw === 0) return null;
+  let big, text;
+  if(ho === 0){ big = `${hw}/${w.length}`; text = `${hw} of ${w.length} days with ${label} were hard days (average mood 2.5 or below). Of ${wo.length} days without it, none were.`; }
+  else {
+    if(rw / ro < 1.4) return null;
+    /* show raw counts and not a ratio, because a ratio like "15x" can come down to one single day in the comparison group */
+    big = `${pct(hw, w.length)}% vs ${pct(ho, wo.length)}%`;
+    text = `${hw} of ${w.length} days with ${label} were hard days (average mood 2.5 or below), compared with ${ho} of ${wo.length} days without it.`;
+  }
+  const strength = hw >= 4 && w.length >= 6 ? 'strong' : 'mod', fromNotes = ds.filter(d => d[flag + 'Note']).length;
+  return {id, big, title:`${label[0].toUpperCase() + label.slice(1)} → harder days`, text, basis:`Based on ${ds.length} logged days${fromNotes ? `, including ${plural(fromNotes, 'day')} found in notes` : ''}`, strength};
+}
+function computeInsights(days){
+  const ds = dayStats(days), out = [];
+  if(ds.length < 5) return {ds, insights:[], note:'Log at least five days to start seeing patterns.'};
+  const a = ratioInsight(ds, 'sleep', 'a logged sleep disruption', 'sleep'); if(a) out.push(a);
+  const b = ratioInsight(ds, 'sched', 'a schedule change', 'sched'); if(b) out.push(b);
+  const both = ds.filter(d => d.sleep && d.sched);
+  if(both.length >= 2 && both.every(isHard)) out.push({id:'both', big:`${both.length}/${both.length}`, title:'Sleep disruption + schedule change together', text:`Every day with both a sleep disruption and a schedule change was a hard day (${both.length} of ${both.length}). Two stressors in one day seems to be the tipping point.`, basis:`Based on ${ds.length} logged days`, strength:both.length >= 3 ? 'strong' : 'mod'});
+  const allE = ds.flatMap(d => d.es), medsPct = pct(allE.filter(e => e.meds).length, allE.length);
+  out.push({id:'meds', big:medsPct + '%', title:'Medication consistency', text:`Medications were logged as given in ${medsPct}% of entries. ${medsPct >= 90 ? 'That’s steady.' : 'There’s room to tighten this up. A missed dose is worth mentioning to the doctor.'}`, basis:`Based on ${allE.length} entries`, strength:medsPct >= 90 ? 'strong' : 'mod'});
+  const tcs = triggerCounts(ds), top = tcs.ranked.slice(0, 2);
+  if(top.length) out.push({id:'trig', big:String(top[0][1]), title:'Most common trigger', text:`${top[0][0]} showed up ${top[0][1]} times${top[1] ? `, followed by ${top[1][0].toLowerCase()} (${top[1][1]})` : ''}.`, basis:`Based on ${allE.length} entries${tcs.fromNotes ? `, including ${plural(tcs.fromNotes, 'mention')} found in notes` : ''}`, strength:top[0][1] >= 5 ? 'strong' : 'mod'});
+  const wk = ds.filter(d => d.weekend), sc = ds.filter(d => !d.weekend);
+  if(wk.length >= 3 && sc.length >= 3){
+    const aw = avg(wk.map(d => d.avg)), as = avg(sc.map(d => d.avg));
+    if(Math.abs(aw - as) >= 0.3) out.push({id:'wk', big:`${aw.toFixed(1)} vs ${as.toFixed(1)}`, title:aw > as ? 'Weekends are easier' : 'Weekdays are easier', text:`Average mood is ${aw.toFixed(1)} on weekends versus ${as.toFixed(1)} on weekdays.`, basis:`${wk.length} weekend days, ${sc.length} weekdays`, strength:Math.abs(aw - as) >= 0.5 ? 'strong' : 'mod'});
+  }
+  const slots = {Morning:[], Afternoon:[], Evening:[]};
+  allE.forEach(e => { const h = new Date(e.ts).getHours(); slots[h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening'].push(e.mood); });
+  const sl = Object.entries(slots).filter(([, v]) => v.length >= 4).map(([k, v]) => [k, avg(v)]).sort((x, y) => x[1] - y[1]);
+  if(sl.length >= 2 && sl[sl.length - 1][1] - sl[0][1] >= 0.3) out.push({id:'tod', big:sl[0][0], title:'Hardest part of the day', text:`${sl[0][0]} check-ins average ${sl[0][1].toFixed(1)}, compared with ${sl[sl.length - 1][1].toFixed(1)} for ${sl[sl.length - 1][0].toLowerCase()}.`, basis:`Based on ${allE.length} entries`, strength:sl[sl.length - 1][1] - sl[0][1] >= 0.5 ? 'strong' : 'mod'});
+  return {ds, insights:out, note:''};
+}
+
+/* ---------- charts (drawn by hand in svg, no library) ---------- */
+/* both charts go by calendar date, so a day with no entries shows as a gap and is never skipped. (counting "7 days" in logged days would stretch them over more calendar days without saying) */
+const periodStart = days => { const s = startOfDay(new Date()); s.setDate(s.getDate() - (days - 1)); return s; };
+function lineChart(ds, days){
+  const W = 640, H = 240, L = 36, R_ = 14, T = 14, B = 30;
+  if(ds.length < 2) return '<div class="empty">Not enough days yet.</div>';
+  const start = periodStart(days), span = Math.max(1, days - 1), at = d => daysBetween(start, d.date);
+  const x = i => L + (W - L - R_) * i / span, y = v => T + (H - T - B) * (5 - v) / 4;
+  let g = '';
+  for(let v = 1; v <= 5; v++) g += `<line x1="${L}" x2="${W - R_}" y1="${y(v)}" y2="${y(v)}" stroke="#E3DCD0" stroke-width="1"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#5C636E">${v}</text>`;
+  const band = `<rect x="${L}" y="${y(2.5)}" width="${W - L - R_}" height="${y(1) - y(2.5)}" fill="#C62F2F" opacity=".07"/><text x="${W - R_ - 4}" y="${y(1) - 6}" text-anchor="end" font-size="10.5" fill="#B02A2A" font-weight="700">difficult-day zone (2.5 or below)</text>`;
+  const path = ds.map((d, i) => `${i ? 'L' : 'M'}${x(at(d)).toFixed(1)} ${y(d.avg).toFixed(1)}`).join(' ');
+  /* the trend on a day is the average of the daily averages in the 7 calendar days ending on it */
+  const ma = ds.map((d, i) => { const w = ds.filter(q => at(q) <= at(d) && at(q) > at(d) - 7); return `${i ? 'L' : 'M'}${x(at(d)).toFixed(1)} ${y(avg(w.map(q => q.avg))).toFixed(1)}`; }).join(' ');
+  const pts = ds.map(d => {
+    const hard = isHard(d), t = `${fmtShort(d.date)}: average mood ${d.avg.toFixed(1)} from ${plural(d.n, 'check-in')}${hard ? ' (difficult day)' : ''}`;
+    return `<circle cx="${x(at(d)).toFixed(1)}" cy="${y(d.avg).toFixed(1)}" r="${hard ? 5.5 : 4.2}" fill="${hard ? '#C62F2F' : '#2563C9'}" stroke="#FFFDF9" stroke-width="1.5"><title>${esc(t)}</title></circle>`;
+  }).join('');
+  const lab = [0, Math.floor(span / 2), span].map(i => { const d = new Date(start); d.setDate(d.getDate() + i); return `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === span ? 'end' : 'middle'}" font-size="11" fill="#5C636E">${fmtShort(d)}</text>`; }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily average mood from ${fmtShort(start)} to ${fmtShort(new Date())}. Blue dots are daily averages, red dots are difficult days, and the orange line is the 7-day trend.">${band}${g}<path d="${path}" fill="none" stroke="#9DB4D6" stroke-width="1.5" opacity=".7"/><path d="${ma}" fill="none" stroke="#E8751A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${pts}${lab}</svg>`;
+}
+/* the period cut into calendar weeks, oldest first. each one holds the logged days in it (a week with none is kept and says "no entries") */
+function weekBuckets(ds, days){
+  const start = periodStart(days), n = Math.ceil(days / 7);
+  const weeks = Array.from({length:n}, (_, k) => { const s = new Date(start); s.setDate(s.getDate() + 7 * k); const e = new Date(s); e.setDate(e.getDate() + 6); return {start:s, end:e > new Date() ? new Date() : e, days:[]}; });
+  ds.forEach(d => { const k = Math.min(n - 1, Math.floor(daysBetween(start, d.date) / 7)); if(k >= 0) weeks[k].days.push(d); });
+  return weeks;
+}
+/* valfn(week) gives a number, or null if the week has no entries. tipfn(week, value) is the hover and screen reader text */
+function weeklyBars(weeks, valFn, fmt, tipFn, color, max, ariaLabel){
+  const W = 640, H = 190, L = 36, R_ = 14, T = 16, B = 30;
+  const vals = weeks.map(valFn), m = max || Math.max(1, ...vals.map(v => v || 0));
+  const bw = (W - L - R_) / weeks.length;
+  const bars = weeks.map((w, i) => {
+    const v = vals[i], bx = L + i * bw + bw * 0.2, cx = bx + bw * 0.3, label = `<text x="${cx}" y="${H - 9}" text-anchor="middle" font-size="11" fill="#5C636E">${fmtShort(w.start)}</text>`;
+    if(v === null) return `<line x1="${bx}" x2="${bx + bw * 0.6}" y1="${H - B - 1}" y2="${H - B - 1}" stroke="#B7AE9E" stroke-width="2" stroke-dasharray="4 4"><title>${esc(tipFn(w, v))}</title></line><text x="${cx}" y="${H - B - 8}" text-anchor="middle" font-size="11" fill="#5C636E">no entries</text>${label}`;
+    const h = (H - T - B) * v / m;
+    return `<rect x="${bx}" y="${H - B - h}" width="${bw * 0.6}" height="${Math.max(h, 1)}" rx="6" fill="${color}"><title>${esc(tipFn(w, v))}</title></rect><text x="${cx}" y="${H - B - h - 5}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1A1F2E">${esc(fmt(v))}</text>${label}`;
+  }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(ariaLabel)}"><line x1="${L}" x2="${W - R_}" y1="${H - B}" y2="${H - B}" stroke="#E3DCD0"/>${bars}</svg>`;
+}
+
+/* === screens === */
+const NAV = [
+  ['today','Today','#/today'], ['handoff','Handoff','#/handoff'], ['log','Log an entry','#/log'],
+  ['patterns','Patterns','#/patterns'], ['profile','Care profile','#/profile'], ['household','Household','#/household']
+];
+function route(){ const h = (location.hash || '#/today').replace(/^#\/?/, ''); const name = h.split('?')[0] || 'today'; return {name: NAV.some(n => n[0] === name) ? name : 'today'}; }
+
+/* the "caring for" switcher at the top of every screen about one person */
+function rbar(){
+  const rs = state.recipients;
+  if(rs.length < 2) return '';
+  return `<div class="rbar"><label for="rsel">Caring for</label><select id="rsel">${rs.map(r => `<option value="${r.id}" ${r.id === R().id ? 'selected' : ''}>${esc(r.profile.name)}${r.profile.age ? ', ' + esc(r.profile.age) : ''}</option>`).join('')}</select></div>`;
+}
+
+function nudges(){
+  const out = [], now = new Date(), es = entriesFor(todayKey());
+  if(state.reminders.log && !es.length && now.getHours() >= 9) out.push('Nothing has been logged yet today. Even one quick entry helps the next person.');
+  if(state.reminders.meds && es.length && !es.some(e => e.meds) && !Object.keys(dosesR().done).length && now.getHours() >= 10) out.push('No medication has been logged as given today. Worth checking before anyone assumes it was done.');
+  return out.map(t => `<div class="nudge" role="note"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9.5"/></svg><span>${esc(t)}</span></div>`).join('');
+}
+
+/* like "jordan · today 3:10 pm" */
+const postedLabel = n => `${n.byName} · ${relDay(n.ts)} ${fmtTime(n.ts)}`;
+let handoffDraft = '';                 // text typed in the handoff box but not posted yet, it stays when the screen redraws
+let justPosted = false;                 // true for one render after a new handoff note so the card can settle in
+const freshIds = new Set();             // ids of care log entries added just now so they can slide in once
+
+/*
+   ---------- "today's entries at a glance", written by the ai from the real entries ----------
+   with no entries, or whenever the ai can't be reached, the built in localsummary() is shown so the card never goes blank.
+   a written summary is saved (in this browser only) with the exact entries it came from, and it only shows while those entries are the same. adding, editing or deleting an entry makes it old and a new one is asked for.
+   sent: today's entries (time, mood, meds, routine, behaviors, triggers, severity and the note text) with the person's first name swapped for [name]. notes are free text so other names typed in them are sent as written.
+*/
+const GLANCE_KEY = 'carethread.glance.v1';
+let glanceCache = (() => { try { const o = JSON.parse(store.get(GLANCE_KEY) || '{}'); return isObj(o) ? Object.fromEntries(Object.entries(o).filter(([, v]) => isObj(v) && isStr(v.sig) && isStr(v.text) && isTs(v.at))) : {}; } catch { return {}; } })();
+const saveGlance = () => store.set(GLANCE_KEY, JSON.stringify(glanceCache));
+let glanceTimer = 0, glanceSeq = 0, glanceBusy = false, glanceFailed = false, glanceMap = [];
+/* real names go back in. a placeholder the ai made up or messed up is never shown as raw brackets */
+const glanceFill = t => restoreMap(t, glanceMap).replace(/\[(MED|CONDITION|DOCTOR)\d*\]|\[(?:medication|condition|doctor)\]/gi, (m, k) => ({MED:'her medication', CONDITION:'her condition', DOCTOR:'the doctor'})[(k || m.slice(1, -1)).toUpperCase().replace(/^MEDICATION$/, 'MED')] || '').replace(/\[NAME\]/g, () => prof().name).replace(/\s{2,}/g, ' ');
+
+function glancePayload(){
+  const es = entriesFor(todayKey()); if(!es.length) return null;
+  /* notes are free text, so the name and the medication, condition and doctor names from the care profile get swapped for numbered placeholders (best effort, a misspelling or a drug that isn't listed would still get through). the map stays on this device and puts the real words back into the ai's answer on screen. */
+  const scr = makeScrubber(); glanceMap = scr.map; const scrub = scr.scrub;
+  const sc = (list, n, len) => [...new Set(list.map(x => scrub(x).slice(0, len)).filter(Boolean))].slice(0, n);
+  const today = todayKey(), byDay = {};
+  entriesR().forEach(e => { const k = dayKey(e.ts); if(k !== today && daysBetween(new Date(k + 'T12:00:00'), new Date()) <= 7) (byDay[k] ||= []).push(e); });
+  const recentDays = Object.keys(byDay).sort().slice(-7).map(k => { const d = byDay[k]; return {date:k, avgMood:Math.round(avg(d.map(e => e.mood)) * 10) / 10, checkIns:Math.min(d.length, 30), triggers:sc(d.flatMap(e => e.triggers), 4, 40), behaviors:sc(d.flatMap(e => e.behaviors), 3, 30), incidents:Math.min(d.filter(e => e.severity > 0).length, 30)}; });
+  return {v:1, task:'glance', person:{ageGroup:aiAgeGroup(prof().age)}, total:Math.min(es.length, 500), triggers:sc(prof().triggers, 6, 100), comfort:sc(prof().sensory, 6, 120), recentDays,
+    entries:es.slice(-12).map(e => ({time:`${pad(new Date(e.ts).getHours())}:${pad(new Date(e.ts).getMinutes())}`, mood:e.mood, meds:e.meds, routine:e.routine, behaviors:e.behaviors.slice(0, 4), triggers:e.triggers.slice(0, 4), severity:e.severity, notes:scrub(e.notes).slice(0, 300)}))};
+}
+function glanceView(){
+  const pl = glancePayload(), c = pl && glanceCache[R().id];
+  if(c && c.sig === JSON.stringify(pl)){ return {ai:true, at:c.at, text:glanceFill(c.text), mindful:(c.mindful || []).map(glanceFill)}; }
+  return {ai:false, has:!!pl, text:localSummary(entriesFor(todayKey())), mindful:[]};
+}
+function glanceTag(g){
+  if(glanceBusy) return '<span class="tiny muted">Updating from the latest entries…</span>';
+  if(g.ai) return `<span class="chip a">AI-written from today’s entries</span> <span class="tiny muted">${esc(fmtTime(g.at))}</span>`;
+  return glanceFailed && g.has ? '<span class="tiny muted">Showing the built-in summary. The AI summary isn’t available right now.</span> <button type="button" class="linkbtn" data-act="retry-glance">Try again</button>' : '';
+}
+function paintGlance(){                       // update the card in place so a redraw never steals focus from a note being typed
+  const t = $('#glance-text'); if(!t) return;
+  const g = glanceView(); t.textContent = g.text;
+  const tag = $('#glance-tag'); if(tag) tag.innerHTML = glanceTag(g);
+  document.querySelectorAll('.mindful-ai').forEach(el => { el.innerHTML = mindfulHtml(g); });
+}
+/* reminders from the person's profile and recent days by the ai. the profile's own triggers and the next medication always stay as the default */
+const mindfulHtml = g => g.ai && g.mindful.length ? `<p class="tiny muted" style="margin:12px 0 6px">From recent days <span class="chip a">AI</span></p><ul class="clean">${g.mindful.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : '';
+const scheduleGlance = () => { clearTimeout(glanceTimer); glanceTimer = setTimeout(refreshGlance, 700); };   // wait a moment so quick edits only make one request
+async function refreshGlance(){
+  const pl = glancePayload(); if(!pl) { glanceFailed = false; paintGlance(); return; }
+  const rid = R().id, sig = JSON.stringify(pl);
+  if(glanceCache[rid] && glanceCache[rid].sig === sig) return;
+  if(location.protocol === 'file:' || navigator.onLine === false){ glanceFailed = true; paintGlance(); return; }
+  const mine = ++glanceSeq, ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 30000);
+  glanceBusy = true; glanceFailed = false; paintGlance();
+  try {
+    const res = await fetch(AI_ENDPOINT, {method:'POST', headers:{'Content-Type':'application/json'}, body:sig, signal:ctl.signal});
+    let data = null; try { data = await res.json(); } catch {}
+    if(mine !== glanceSeq) return;                                  // a newer request took over
+    if(res.ok && data && data.ok === true && isObj(data.glance) && isStr(data.glance.summary) && data.glance.summary.trim()){ glanceCache[rid] = {sig, text:data.glance.summary.trim(), at:new Date().toISOString(), mindful:Array.isArray(data.glance.mindful) ? data.glance.mindful.filter(isStr).slice(0, 3) : []}; saveGlance(); }
+    else glanceFailed = true;
+  } catch { if(mine === glanceSeq) glanceFailed = true; }
+  finally { clearTimeout(timer); if(mine === glanceSeq){ glanceBusy = false; paintGlance(); } }
+}
+
+/*
+   the stitched handoff note: #active-note-card.
+   top: the latest note a caregiver wrote. under it: a short summary worked out from today's check-ins.
+*/
+function noteCard(big){
+  const n = noteR(), p = prof(), g = glanceView();
+  const who = n ? `<span class="chip" style="text-transform:none;letter-spacing:0">${esc(postedLabel(n))}</span>` : '';
+  const body = n ? `<p class="body">${esc(n.text)}</p>` : `<p class="body">No handoff note for ${esc(p.name)} yet. When a shift ends, you can leave one here for the next caregiver.</p>`;
+  const chips = n && n.highlights.length ? `<div class="row" style="gap:8px;margin-top:12px">${n.highlights.map(h => `<span class="chip a">${esc(h)}</span>`).join('')}</div>` : '';
+  return `<section id="active-note-card" class="note ${big ? 'big' : ''} ${justPosted ? 'settle' : ''}" aria-labelledby="notelabel">
+    <div class="tag" id="notelabel">Handoff note <span aria-hidden="true">·</span> for whoever is next ${who}</div>
+    <div aria-live="polite">${body}</div>
+    ${chips}
+    <div class="autosum"><p class="tiny muted"><b>Today’s entries at a glance</b> <span id="glance-tag">${glanceTag(g)}</span></p><p id="glance-text" aria-live="polite">${esc(g.text)}</p></div>
+    <div class="foot">
+      <span class="tiny muted">The note is written by a caregiver. The summary updates as entries come in. When the AI service is available it writes it from today’s entries and notes (names removed first); otherwise a built-in one is shown.</span>
+      <span class="row"><button class="btn ghost small" data-act="copy-summary">Copy</button></span>
+    </div>
+  </section>`;
+}
+
+/* the medication tracker: #medication-list. each dose is pending until a caregiver taps it, then it says taken with their signature and time. tapping also adds a "sign-off" entry to the care timeline. */
+function medTracker(){
+  const meds = prof().medications, done = dosesR().done;
+  const taken = meds.filter(m => done[medKey(m)]).length, total = meds.length;
+  const rows = meds.map(m => {
+    const key = medKey(m), rec = done[key], isTaken = !!rec;
+    const action = isTaken
+      ? `<button type="button" class="statebtn" data-status="taken" disabled aria-label="${esc(m.name)} has been taken">Taken</button>
+         <span class="signline">Signed: ${esc(rec.byName)} · ${fmtTime(rec.at)}</span>
+         ${canUndoDose(rec) ? `<button type="button" class="linkbtn" data-act="undo-dose" data-key="${esc(key)}" aria-label="Undo sign-off for ${esc(m.name)}">Undo</button>` : ''}`
+      : `<button type="button" class="statebtn" data-status="pending" data-act="sign-dose" data-key="${esc(key)}" aria-label="Mark ${esc(m.name)} as taken">Pending</button>`;
+    return `<li class="medrow" data-status="${isTaken ? 'taken' : 'pending'}">
+      <div><div class="medname">${esc(m.name)} · ${esc(m.dose)}</div><div class="meddetail">Due ${esc(m.time)}${m.when ? ' · ' + esc(m.when) : ''}</div></div>
+      <div class="medaction">${action}</div></li>`;
+  }).join('');
+  return `<progress class="medbar" id="medication-progress-bar" max="100" value="${total ? Math.round(100 * taken / total) : 0}" aria-labelledby="medication-progress-text"></progress>
+    <p class="medtext" id="medication-progress-text">${total ? `${taken} of ${total} doses signed off today` : 'No medications on file yet.'}</p>
+    <ul id="medication-list" class="medlist">${rows || '<li class="muted">Add medications in the care profile and they will show up here.</li>'}</ul>`;
+}
+
+/* the vertical care timeline: #activity-feed (newest first). */
+function careLogCard(l){
+  const c = LOG_CATEGORIES[l.cat];
+  return `<li class="${freshIds.has(l.id) ? 'is-new' : ''}"><span class="node glyph" style="--c:${c.c}" aria-hidden="true">${esc(c.glyph)}</span>
+    <article class="entry"><header><span><span class="who">${esc(l.byName)}</span> <span class="when">· ${fmtShort(l.ts)}, ${fmtTime(l.ts)} · ${esc(relDay(l.ts))}</span></span><span class="chip" style="background:${c.bg};color:${c.ink}">${esc(c.label)}</span></header>
+    <h3>${esc(l.title)}</h3><p class="details">${esc(l.details)}</p>
+    ${l.highlights.length ? `<div class="tags">${l.highlights.map(h => `<span class="chip a">${esc(h)}</span>`).join('')}</div>` : ''}
+    </article></li>`;
+}
+function careTimeline(){
+  /* newest first. two entries with the same timestamp keep the order they were added, so the last one added is on top */
+  const logs = careLogsR().map((l, i) => [l, i]).sort((a, b) => new Date(b[0].ts) - new Date(a[0].ts) || b[1] - a[1]).map(x => x[0]), p = prof();
+  let line = `No care logs for ${p.name} yet.`;
+  if(logs.length){
+    const oldest = Math.min(...logs.map(l => new Date(l.ts).getTime()));
+    const weeks = Math.max(1, Math.ceil(daysBetween(new Date(oldest), new Date()) / 7));
+    line = `${plural(logs.length, 'log')} across ${plural(weeks, 'week')} · every caregiver sees the same story`;
+  }
+  return `<section class="e" aria-labelledby="ctl"><h2 id="ctl" style="margin:4px 0 4px">Care timeline</h2><p class="muted tiny" style="margin-bottom:14px">${esc(line)}</p>
+    <ol id="activity-feed" class="timeline">${logs.map(careLogCard).join('')}</ol>
+    ${logs.length ? '' : '<div class="empty">Handoff notes and medication sign-offs will build the timeline here.</div>'}</section>`;
+}
+
+function entryCard(e){
+  const m = MOODS[e.mood];
+  const tags = [...e.behaviors.map(b => `<span class="chip t">${esc(b)}</span>`), ...e.triggers.map(t => `<span class="chip a">${esc(t)}</span>`),
+    e.severity ? `<span class="chip warn">Incident · severity ${e.severity}/3</span>` : '', !e.meds ? '<span class="chip warn">Meds not given</span>' : '', !e.routine ? '<span class="chip warn">Routine missed</span>' : ''].join('');
+  return `<li><span class="node" style="--c:${m.c}">${face(e.mood, 26)}</span>
+    <article class="entry"><header><span><span class="who">${esc(e.byName)}</span> <span class="when">· ${fmtTime(e.ts)}</span></span>${moodChip(e.mood)}</header>
+    <div class="tags">${tags}</div>
+    ${e.notes ? `<p class="note-txt" tabindex="0" role="button" aria-expanded="false" title="Tap to read the full note">${esc(e.notes)}</p>` : ''}
+    ${canEdit(e) ? `<div class="eactions"><button class="linkbtn" data-act="edit-entry" data-id="${e.id}" aria-label="Edit entry by ${esc(e.byName)} at ${fmtTime(e.ts)}">Edit</button><button class="linkbtn d" data-act="delete-entry" data-id="${e.id}" aria-label="Delete entry by ${esc(e.byName)} at ${fmtTime(e.ts)}">Delete</button></div>` : ''}
+    </article></li>`;
+}
+
+/* the next dose that hasn't been signed off yet today */
+function nextMed(){
+  const cur = new Date().getHours() * 60 + new Date().getMinutes(), done = dosesR().done;
+  const pending = prof().medications.filter(m => !done[medKey(m)]);
+  if(!prof().medications.length) return '<span class="muted">No schedule on file</span>';
+  if(!pending.length) return '<span class="muted">All of today’s doses are signed off</span>';
+  const list = pending.map(m => ({m, t:timeToMinutes(m.time)})).filter(x => x.t !== null).sort((a, b) => a.t - b.t);
+  if(!list.length) return pending.map(m => `<b>${esc(m.name)} ${esc(m.dose)}</b>`).join(', ');
+  const t0 = (list.find(x => x.t >= cur) || list[0]).t;
+  const group = list.filter(x => x.t === t0);
+  return `<b>${group.map(x => `${esc(x.m.name)} ${esc(x.m.dose)}`).join(', ')}</b> at ${esc(group[0].m.time)}${t0 < cur ? ' <span class="muted">(overdue)</span>' : ''}`;
+}
+
+/*
+   === shifts ===
+   one active shift per person (state.shifts[personid]) and a list of finished ones (state.shiftlog).
+   starting a shift doesn't need an entry first. ending it stamps the end time and moves it to the history.
+   entries made by the person on shift, at or after the start, carry that shift's id (entry.shift).
+   entries made outside a shift carry none, and handoff notes never depend on a shift.
+   everything is in this browser's localstorage like the rest of the app.
+*/
+const shiftR = () => state.shifts[R().id] || null;
+const fmtDur = ms => { const m = Math.max(0, Math.floor(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} hr ${m % 60} min` : m ? `${m} min` : 'under a minute'; };
+const shiftDur = s => new Date(s.end).getTime() - new Date(s.at).getTime();
+const shiftEntries = sid => state.entries.filter(e => e.shift === sid).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+const shiftSpan = s => `${fmtShort(s.at)}, ${fmtTime(s.at)} to ${dayKey(s.at) === dayKey(s.end) ? '' : fmtShort(s.end) + ', '}${fmtTime(s.end)}`;
+/* an entry is only attached to the shift if the person logging it is the one on shift and the time isn't before the shift began (compared by the minute because entry times are whole minutes) */
+const shiftTag = when => { const sh = shiftR(); return sh && sh.id === me().id && when.getTime() >= Math.floor(new Date(sh.at).getTime() / 60000) * 60000 ? {shift:sh.sid} : {}; };
+let justEnded = null;       // id of the shift that just ended so the handoff screen can confirm it once
+window.addEventListener('hashchange', () => { justEnded = null; });
+
+function finishShift(rid, by){
+  const sh = state.shifts[rid]; if(!sh) return null;
+  const now = new Date().toISOString(), done = {sid:sh.sid, rid, id:sh.id, name:sh.name, at:sh.at, end:new Date(now) < new Date(sh.at) ? sh.at : now};
+  if(by.id !== sh.id) done.endedBy = by.name;
+  state.shiftLog.push(done);
+  if(state.shiftLog.length > 200) state.shiftLog.splice(0, state.shiftLog.length - 200);     // keeps the saved data small
+  delete state.shifts[rid];
+  return done;
+}
+function startShift(){
+  const rid = R().id, who = me(), cur = state.shifts[rid];
+  if(cur){                                              // never a second active shift for the same person
+    toast(cur.id === who.id ? `Your shift with ${prof().name} is already active.` : `${cur.name} is already on shift with ${prof().name}.`);
+    render(true); return;
+  }
+  state.shifts[rid] = {sid:uid('sh'), rid, id:who.id, name:who.name, at:new Date().toISOString(), status:'active'};
+  justEnded = null; markChanged(rid); pendingFocus = '[data-act="end-shift"]'; save(); render(true); toast(`You’re on shift, ${who.name}.`);
+}
+function endShift(){
+  const sh = shiftR(), who = me();
+  if(!sh || !(sh.id === who.id || isAdmin())) return;
+  const done = finishShift(R().id, who);
+  justEnded = done.sid; handoffOpen = false; markChanged(R().id); pendingFocus = '#shift-done'; save(); render(true); toast('Shift ended.');
+}
+function takeOverShift(){
+  const sh = shiftR(), who = me();
+  if(!sh || sh.id === who.id) return;
+  if(!confirm(`End ${sh.name}’s shift with ${prof().name} now and start yours?`)) return;
+  finishShift(R().id, who); startShift();
+}
+function openHistory(){
+  const sec = $('#shift-history'); if(!sec) return;
+  const d = sec.querySelector('details'); if(d) d.open = true;
+  sec.scrollIntoView({behavior:reducedMotion() ? 'auto' : 'smooth', block:'start'});
+  const f = sec.querySelector('summary'); if(f) f.focus({preventScroll:true});
+}
+/* the "so far" time on the handoff screen counts up without redrawing the page */
+function tickElapsed(){ document.querySelectorAll('[data-since]').forEach(el => { el.textContent = fmtDur(Date.now() - new Date(el.dataset.since).getTime()); }); }
+setInterval(tickElapsed, 30000);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') tickElapsed(); });
+
+/* one line on the log screen that says clearly whether the entry will belong to a shift */
+function shiftHint(){
+  const sh = shiftR(), who = me();
+  if(sh && sh.id === who.id) return `You’re on shift (since ${esc(fmtTime(sh.at))}), so this entry is added to your shift.`;
+  if(sh) return `${esc(sh.name)} is on shift with ${esc(prof().name)}. This entry is saved under your name and is not added to their shift.`;
+  return 'You’re not on a shift, so this entry is saved on its own. You can start a shift on the Handoff screen whenever you like.';
+}
+
+function shiftCard(){
+  const p = prof(), sh = shiftR(), who = me(), nHist = state.shiftLog.filter(s => s.rid === R().id).length;
+  const histBtn = `<button type="button" class="btn ghost small" data-act="open-history">Shift history (${nHist})</button>`;
+  const jd = justEnded && state.shiftLog.find(s => s.sid === justEnded && s.rid === R().id);
+  let out = '';
+  if(jd){
+    const n = shiftEntries(jd.sid).length;
+    out += `<div class="card shiftcard done" id="shift-done" tabindex="-1" role="status">
+      <h2>Shift ended</h2>
+      <p style="margin-top:6px"><b>${esc(jd.name)}</b> was with ${esc(p.name)} for <b>${esc(fmtDur(shiftDur(jd)))}</b>.</p>
+      <p class="muted tiny" style="margin-top:4px">${esc(shiftSpan(jd))} · ${plural(n, 'entry', 'entries')} logged during the shift. Saved to the shift history.</p>
+      <div class="row" style="margin-top:12px"><button type="button" class="btn amber" data-act="focus-handoff">Leave a note for the next caregiver</button><button type="button" class="btn ghost" data-act="dismiss-shift-done">Done</button></div>
+    </div>`;
+  }
+  if(sh){
+    const mine = sh.id === who.id, canEnd = mine || isAdmin(), n = shiftEntries(sh.sid).length, ms = Date.now() - new Date(sh.at).getTime();
+    out += `<div class="card shiftcard" id="shift-card">
+      <p class="live">On shift</p>
+      <h2 style="margin-top:6px">${mine ? 'Your shift is active' : `${esc(sh.name)}’s shift is active`}</h2>
+      <p style="margin-top:6px"><b>${esc(sh.name)}</b> started at <b>${esc(fmtTime(sh.at))}</b>${relDay(sh.at) === 'Today' ? '' : ' (' + esc(relDay(sh.at)).toLowerCase() + ')'}</p>
+      <p class="muted" style="margin-top:2px"><span data-since="${esc(sh.at)}">${esc(fmtDur(ms))}</span> so far · ${plural(n, 'entry', 'entries')} logged this shift</p>
+      ${ms > 16 * 3600000 ? '<p class="tiny" style="margin-top:8px;color:var(--amber-ink)">This shift has been open a long time. If it was left running by mistake, end it now.</p>' : ''}
+      <p class="tiny muted" style="margin-top:8px">${mine ? 'Entries you log now are added to this shift.' : `Entries are added only to the shift of the person who logs them. To start yours, take over from ${esc(sh.name)}.`}</p>
+      <div class="row" style="margin-top:14px">${canEnd ? '<button type="button" class="btn amber" data-act="end-shift">End shift</button>' : ''}${mine ? '' : `<button type="button" class="btn" data-act="takeover-shift">Take over as ${esc(who.name)}</button>`}<a class="btn ghost" href="#/log">Log an entry</a>${histBtn}</div>
+    </div>`;
+  } else {
+    out += `<div class="card shiftcard">
+      <h2>Ready?</h2>
+      <p class="muted" style="margin-bottom:12px">Starting your shift lets everyone see who’s with ${esc(p.name)} right now. You don’t need to log anything first.</p>
+      <div class="row"><button type="button" class="btn" data-act="start-shift">Start my shift as ${esc(who.name)}</button>${histBtn}</div>
+    </div>`;
+  }
+  return out;
+}
+
+/* finished shifts for the selected person, newest first */
+function shiftHistory(){
+  const all = state.shiftLog.filter(s => s.rid === R().id).sort((a, b) => new Date(b.at) - new Date(a.at) || new Date(b.end) - new Date(a.end)), shown = all.slice(0, 20);
+  const rows = shown.map(s => {
+    const es = shiftEntries(s.sid);
+    return `<details class="sh"><summary><span><b>${esc(s.name)}</b> <span class="muted">· ${esc(shiftSpan(s))}</span></span><span class="muted">${esc(fmtDur(shiftDur(s)))} · ${plural(es.length, 'entry', 'entries')}</span></summary>
+      <div class="shbody">${s.endedBy ? `<p class="tiny muted" style="margin-bottom:8px">Ended by ${esc(s.endedBy)}.</p>` : ''}${es.length ? `<ul class="timeline">${[...es].reverse().map(entryCard).join('')}</ul>` : '<p class="muted">No entries were logged during this shift.</p>'}</div></details>`;
+  }).join('');
+  return `<section id="shift-history" aria-labelledby="shh"><h2 id="shh" style="margin-bottom:4px">Shift history</h2>
+    <p class="muted tiny" style="margin-bottom:12px">Finished shifts with ${esc(prof().name)}, newest first. Saved in this browser.</p>
+    ${rows || '<div class="empty">No finished shifts yet. When someone ends a shift, it shows up here.</div>'}
+    ${all.length > shown.length ? `<p class="tiny muted" style="margin-top:10px">Showing the latest ${shown.length} of ${all.length} shifts.</p>` : ''}</section>`;
+}
+
+function viewToday(){
+  const p = prof(), es = entriesFor(todayKey()), meds = es.length ? es.every(e => e.meds) : null, rout = es.length ? es.every(e => e.routine) : null, mood = es.length ? avg(es.map(e => e.mood)) : null;
+  const moodR = mood ? clamp(Math.round(mood), 1, 5) : 0;
+  const sh = state.shifts[R().id];
+  return `<div class="pagehead"><p class="eyebrow">${fmtLong(new Date())}</p><h1>Hi ${esc(me().name)}. Here’s how ${esc(p.name)}’s day is going.</h1>${rbar()}</div>
+  <div class="tgrid">
+    <div class="a stack">
+      ${nudges()}
+      ${noteCard(false)}
+      <div class="row"><a class="btn amber" href="#/log">${ico('log', 20)} Log an entry</a><a class="btn ghost" href="#/handoff">Open handoff view</a></div>
+    </div>
+    <div class="side">
+      <div class="b stats" aria-label="Today at a glance">
+        <div class="stat ${meds === true ? 'ok' : meds === false ? 'warn' : ''}"><div class="k">Meds</div><div class="v">${meds === null ? '—' : meds ? 'Given' : 'Missed'}</div><div class="s">${meds === null ? 'none logged' : meds ? 'all entries' : 'check first'}</div></div>
+        <div class="stat ${rout === true ? 'ok' : rout === false ? 'warn' : ''}"><div class="k">Routine</div><div class="v">${rout === null ? '—' : rout ? 'On track' : 'Off'}</div><div class="s">${rout === null ? 'none logged' : rout ? 'all entries' : 'disrupted'}</div></div>
+        <div class="stat"><div class="k">Mood</div><div class="v">${mood ? mood.toFixed(1) : '—'}</div><div class="s">${mood ? MOODS[moodR].label : 'no data'}</div></div>
+      </div>
+      <section class="m card" aria-labelledby="medh"><h2 id="medh">Today’s medications</h2>${medTracker()}</section>
+      <div class="d stack">
+        <div class="card"><h2>On shift</h2>
+          ${sh ? `<p><b>${esc(sh.name)}</b> since ${fmtTime(sh.at)}</p><p class="muted tiny" style="margin-top:4px">You can end the shift on the Handoff screen.</p><a class="btn ghost small" style="margin-top:10px" href="#/handoff">Open shift</a>` : `<p class="muted">Nobody is on shift with ${esc(p.name)} right now.</p><button type="button" class="btn ghost small" style="margin-top:10px" data-act="start-shift">Start my shift</button>`}
+        </div>
+        <div class="card"><h2>Things to be mindful of</h2>
+          <p class="tiny muted" style="margin-bottom:6px">Known triggers</p><div class="row" style="gap:6px">${p.triggers.map(t => `<span class="chip a">${esc(t)}</span>`).join('') || '<span class="muted">None listed</span>'}</div>
+          <p class="tiny muted" style="margin:12px 0 6px">Next medication</p><p>${nextMed()}</p>
+          <div class="mindful-ai">${mindfulHtml(glanceView())}</div>
+        </div>
+      </div>
+    </div>
+    <section class="c" aria-labelledby="tl"><h2 id="tl" style="margin:4px 0 14px">Today’s thread</h2>
+      ${es.length ? `<ul class="timeline">${[...es].reverse().map(entryCard).join('')}</ul>` : `<div class="empty"><b>No entries yet today.</b><p style="margin-top:6px">The first quick log starts the thread.</p></div>`}
+    </section>
+    ${careTimeline()}
+  </div>`;
+}
+
+let editId = null;
+function viewLog(){
+  const p = prof(), ed = editId ? state.entries.find(e => e.id === editId) : null;
+  const d = ed ? new Date(ed.ts) : new Date(), t = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const c = (cond) => cond ? 'checked' : '';
+  return `<div class="pagehead"><p class="eyebrow">${ed ? 'Editing an entry' : 'New entry'}</p><h1>${ed ? `Edit ${esc(ed.byName)}’s entry` : `How is ${esc(p.name)} right now?`}</h1><p class="lede">${ed ? 'Change anything and save. The handoff note will update.' : 'Takes under a minute. Everything except mood is optional.'}</p>${ed ? '' : rbar()}</div>
+  <form id="logform" class="stack" style="max-width:680px" novalidate>
+    <fieldset><legend id="mlegend">Mood <span class="muted" style="font-weight:400">(1 = very hard, 5 = great)</span></legend>
+      <div class="moods" role="radiogroup" aria-labelledby="mlegend">${[1,2,3,4,5].map(m => `<label><input type="radio" name="mood" value="${m}" ${c(ed && ed.mood === m)}><span class="tile" style="--c:${MOODS[m].c};--bg:${MOODS[m].bg}">${face(m, 34)}<i>${m}</i><b>${MOODS[m].label}</b></span></label>`).join('')}</div>
+      <p class="err" id="moderr" role="alert"></p>
+    </fieldset>
+    <div class="grid2" style="gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      <fieldset><legend>Medications given this shift?</legend><div class="seg"><label><input type="radio" name="meds" value="yes" ${c(!ed || ed.meds)}><span>Yes</span></label><label><input type="radio" name="meds" value="no" ${c(ed && !ed.meds)}><span>No</span></label></div></fieldset>
+      <fieldset><legend>Routine completed?</legend><div class="seg"><label><input type="radio" name="routine" value="yes" ${c(!ed || ed.routine)}><span>Yes</span></label><label><input type="radio" name="routine" value="no" ${c(ed && !ed.routine)}><span>No</span></label></div></fieldset>
+    </div>
+    <fieldset><legend>How did ${esc(p.name)} seem?</legend><div class="chips">${BEHAVIORS.map(b => `<label><input type="checkbox" name="beh" value="${b}" ${c(ed && ed.behaviors.includes(b))}><span>${b}</span></label>`).join('')}</div></fieldset>
+    <fieldset><legend>Anything that set things off?</legend><div class="chips trig">${TRIGGERS.map(b => `<label><input type="checkbox" name="trig" value="${b}" ${c(ed && ed.triggers.includes(b))}><span>${b}</span></label>`).join('')}</div></fieldset>
+    <fieldset><legend>Was there an incident?</legend>
+      <div class="seg" style="grid-template-columns:repeat(4,1fr)">${[[0,'None'],[1,'Mild'],[2,'Moderate'],[3,'Serious']].map(([v, l]) => `<label><input type="radio" name="sev" value="${v}" ${c(ed ? ed.severity === v : v === 0)}><span>${l}</span></label>`).join('')}</div></fieldset>
+    <label class="f">Notes <small>What happened, what helped, what the next person should know.</small><textarea name="notes" maxlength="1200" placeholder="e.g. Got anxious after the doorbell. Quiet time with a familiar record helped within 15 minutes.">${ed ? esc(ed.notes) : ''}</textarea></label>
+    <label class="f" style="max-width:220px">Happened at <small>Change this if you’re logging late.</small><input type="time" name="time" value="${t}"></label>
+    ${ed ? '' : `<p class="tiny muted" id="shift-hint">${shiftHint()}</p>`}
+    <div class="row"><button class="btn amber" type="submit">${ed ? 'Save changes' : `Save entry as ${esc(me().name)}`}</button><a class="btn ghost" href="#/${NAV.some(n => n[0] === logOrigin) && logOrigin !== 'log' ? logOrigin : 'today'}">Cancel</a></div>
+  </form>`;
+}
+
+function viewHandoff(){
+  const p = prof(), es = entriesFor(todayKey());
+  return `<div class="pagehead"><p class="eyebrow">Taking over</p><h1>Before you start, read this.</h1><p class="lede">A quick briefing on ${esc(p.name)}’s day so far, written from everyone’s entries.</p>${rbar()}</div>
+  <div class="stack" style="max-width:760px">
+    ${noteCard(true)}
+    <div class="grid2" style="gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      <div class="card"><h2>Medication schedule</h2>${medTracker()}</div>
+      <div class="card"><h2>Things to be mindful of</h2><ul class="clean">${p.triggers.map(t => `<li>${esc(t)}</li>`).join('') || '<li class="muted">None listed</li>'}</ul><div class="mindful-ai">${mindfulHtml(glanceView())}</div></div>
+    </div>
+    ${shiftCard()}
+    ${handoffOpen ? `<form id="handoffform" class="card" novalidate>
+      <h2>Note for the next caregiver</h2>
+      <p class="tiny muted" style="margin-bottom:10px">Entries record what happened. A handoff note tells the next person what to do or watch for. Ongoing preferences and triggers belong in the <a href="#/profile">care profile</a>.</p>
+      <label class="f">What should the next caregiver know?<small>It becomes the handoff note on Today and is added to the care timeline.</small>
+        <textarea id="handoff-input" name="handoff" maxlength="${MAX_HANDOFF}" rows="4" placeholder="e.g. Calm afternoon. She ate well and napped for an hour. Evening medication is due at 8.">${esc(handoffDraft)}</textarea></label>
+      <div class="row" style="justify-content:space-between;margin-top:12px"><span class="tiny muted" id="handoff-counter" aria-live="off">${handoffDraft.length} / ${MAX_HANDOFF}</span><button class="btn amber" type="submit">Post handoff note</button></div>
+      <p class="err" id="handoff-error" role="alert"></p>
+    </form>` : ''}
+    ${shiftHistory()}
+    <section><h2 style="margin-bottom:12px">Today’s entries (${es.length})</h2>${es.length ? `<ul class="timeline">${[...es].reverse().map(entryCard).join('')}</ul>` : '<div class="empty">Nothing logged yet today.</div>'}</section>
+  </div>`;
+}
+
+function viewProfile(edit){
+  const p = prof(), adm = isAdmin();
+  if(edit && adm){
+    return `<div class="pagehead"><p class="eyebrow">Editing</p><h1>${esc(p.name)}’s care profile</h1><p class="lede">One item per line. Medications use <code>name | dose | when | time</code>. Doctors use <code>name | role | phone</code>.</p></div>
+    <form id="profform" class="stack" style="max-width:720px">
+      <div class="grid2" style="gap:14px;grid-template-columns:2fr 1fr"><label class="f">Name<input type="text" name="name" value="${esc(p.name)}" required></label><label class="f">Age<input type="number" name="age" min="0" max="120" value="${esc(p.age)}"></label></div>
+      <label class="f">Diagnoses<textarea name="diagnoses">${esc(p.diagnoses.join('\n'))}</textarea></label>
+      <label class="f">Medications<textarea name="medications">${esc(p.medications.map(m => [m.name, m.dose, m.when, m.time].join(' | ')).join('\n'))}</textarea></label>
+      <label class="f">Known triggers<textarea name="triggers">${esc(p.triggers.join('\n'))}</textarea></label>
+      <label class="f">Comfort &amp; sensory preferences<textarea name="sensory">${esc(p.sensory.join('\n'))}</textarea></label>
+      <label class="f">Doctors<textarea name="doctors">${esc(p.doctors.map(d => [d.name, d.role, d.phone].join(' | ')).join('\n'))}</textarea></label>
+      <label class="f">Emergency notes<textarea name="emergency">${esc(p.emergency)}</textarea></label>
+      <div class="row"><button class="btn" type="submit">Save profile</button><button class="btn ghost" type="button" data-act="cancel-profile">Cancel</button></div>
+    </form>`;
+  }
+  const none = '<span class="muted">Nothing added yet</span>';
+  return `<div class="pagehead"><p class="eyebrow">Shared reference</p><h1>${esc(p.name)}${p.age ? `, ${esc(p.age)}` : ''}</h1>${rbar()}
+    <div class="row" style="margin-top:12px">${adm ? '<button class="btn small" data-act="edit-profile">Edit profile</button>' : `<span class="chip">Read-only. Only admins can edit (${esc(state.household.members.filter(m => m.role === 'admin').map(m => m.name).join(', '))})</span>`}</div></div>
+  <div class="grid2">
+    <div class="stack">
+      <div class="card"><h2>Diagnoses</h2><div class="row" style="gap:6px">${p.diagnoses.map(d => `<span class="chip t">${esc(d)}</span>`).join('') || none}</div></div>
+      <div class="card"><h2>Medications</h2>${p.medications.length ? `<div style="overflow-x:auto"><table class="plain"><thead><tr><th>Medication</th><th>Dose</th><th>When</th></tr></thead><tbody>${p.medications.map(m => `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.dose)}</td><td>${esc(m.when)}, ${esc(m.time)}</td></tr>`).join('')}</tbody></table></div>` : none}</div>
+      <div class="card"><h2>Known triggers</h2>${p.triggers.length ? `<ul class="clean">${p.triggers.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : none}</div>
+      <div class="card"><h2>Comfort &amp; sensory preferences</h2>${p.sensory.length ? `<ul class="clean">${p.sensory.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : none}</div>
+    </div>
+    <div class="stack">
+      <div class="card"><h2>Doctors</h2>${p.doctors.map(d => `<p style="margin-bottom:10px"><b>${esc(d.name)}</b><br><span class="muted">${esc(d.role)}</span><br><a href="tel:${esc(d.phone.replace(/[^\d+]/g, ''))}">${esc(d.phone)}</a></p>`).join('') || none}</div>
+      <div class="card" style="border-color:#E3B9B0;background:#FFF6F3"><h2 style="color:var(--brick)">Emergency notes</h2><p>${p.emergency ? esc(p.emergency) : none}</p></div>
+    </div>
+  </div>`;
+}
+
+let range = 28;
+
+/*
+   ---------- optional ai reflection (extra, every rule based insight on this screen works without it) ----------
+   the result only lives in memory. it is never saved to localstorage and is gone on refresh.
+*/
+const AI_ENDPOINT = '/api/care-insights';
+const aiIdle = () => ({status:'idle', rid:null, range:null, reflection:null, message:'', at:null, sig:null});   // sig: the exact summary the reflection was written from
+let ai = aiIdle(), aiSeq = 0;      // aiseq: only the newest request can update the screen
+
+/* a short plain read of the pattern findings, built from the calculated insights (no outside service) */
+function plainWords(insights, p){
+  const get = id => insights.find(i => i.id === id), out = [], nm = p.name;
+  if(get('both')) out.push(`The hardest days for ${nm} are the ones where a rough night and a change to the schedule land together.`);
+  else if(get('sleep')) out.push(`Poor sleep tends to be followed by a harder day for ${nm}.`);
+  else if(get('sched')) out.push(`Changes to the schedule seem to weigh on ${nm}.`);
+  const tod = get('tod'); if(tod) out.push(`${tod.big} is the hardest part of the day.`);
+  const wk = get('wk'); if(wk) out.push(`${wk.title}: ${wk.text}`);
+  const meds = get('meds'); if(meds) out.push(`Medications were logged as given in ${meds.big} of check-ins.`);
+  const trig = get('trig'); if(trig && out.length < 4) out.push(trig.text);
+  out.push('These are patterns in your own notes, not a diagnosis, so they are worth sharing with the doctor.');
+  return out.slice(0, 5).join(' ');
+}
+/*
+   ---------- the care records the ai reads (used by the ai reflection and the doctor visit prompt) ----------
+   carecontext() is the only thing that leaves the device for those two features, and it is built from what is saved here.
+   sent, for the selected person and period only: calculated stats and patterns, the person's listed triggers and comfort preferences, entries (mood, medication and routine answers, behaviors, triggers, incident level and the written note), handoff notes, and care log titles, details and highlights, plus a few older records that still matter (an unresolved or serious earlier item, the baseline routine and the latest medication schedule log).
+   each written note is cut to about note_limit characters by fitnote() which keeps the sentences about serious events. when there are too many records, serious events go first, then the newest notes, and the rest are counted in "omitted".
+   swapped for placeholders before sending and put back on screen: the person's name, and the medication, condition and doctor names listed in the profile.
+   not sent: phone numbers, emergency notes, caregiver names, household details, other people's records.
+*/
+const NOTE_LIMIT = 280, EARLIER_DAYS = 120, BYTES = {entries:7500, handoffs:2400, careLogs:3200}, COUNTS = {entries:16, handoffs:6, careLogs:8};   // kept small on purpose, a smaller request gets answered faster
+const MEDW = '(?:\\b(?:meds?|medications?|medicines?|pills?|tablets?|doses?|prescriptions?|patch|inhaler|insulin)\\b|\\[MED\\d+\\])';
+const PROBW = '(?:lost|missing|misplaced|unaccounted|not found|can.?t find|cannot find|couldn.?t find|look(?:ing|ed)? for|refus\\w*|spit|spat|wrong|incorrect\\w*|doubl\\w*|extra|missed|skipped|forgot\\w*|ran out|out of|spill\\w*|dropp\\w*|stolen)';
+/* [flag, weight, pattern]: keyword hints for what a caregiver might need to notice. they only decide what is kept first when space runs out, and the ai is told they are hints. */
+const CRIT_RULES = [
+  ['medication', 5, new RegExp('\\b' + PROBW + '\\b[^.!?]{0,60}' + MEDW + '|' + MEDW + '[^.!?]{0,60}\\b' + PROBW + '\\b', 'i')],
+  ['safety', 5, /\b(?:fell(?!\s+(?:back\s+)?asleep)|falls?(?!\s+(?:back\s+)?asleep)|fallen|injur\w*|bruis\w*|bleed\w*|hurt|hospital|emergency|ambulance|911|wander\w*|left the house|got out|chok\w*|burn(?:s|ed|t)?|unsafe|unresponsive|faint\w*|collaps\w*)\b/i],
+  /* "unresolved" means something is still open ("not found", "still missing"). normal reminders ("make sure the night light is on") are instructions and not open problems, and "looking for her keys" is neither. */
+  ['unresolved', 4, /\b(?:still (?:missing|not|no|waiting)|not (?:yet )?(?:found|resolved)|unresolved|haven.?t (?:found|heard|resolved)|needs? to (?:be )?(?:check|verif|confirm|find|call|follow)\w*|unaccounted)\b/i],
+  ['behavior', 3, /\b(?:aggress\w*|hit(?:ting|s)?\s+(?:me|her|him|them|someone)|scream\w*|yell\w*|panic\w*|hallucinat\w*|paranoi\w*|agitat\w*|meltdown|shut ?down|not eating|not drinking|wouldn.?t eat|refus\w* (?:to )?(?:eat|drink|go|come|move))\b/i],
+  ['sleep', 3, /\b(?:didn.?t sleep|no sleep|awake all night|up all night|barely slept|poor sleep|rough night|bad night|woke (?:up )?(?:at|every|several|often)|sleep disruption|insomnia|restless night)\b/i],
+  ['instruction', 2, /\b(?:next caregiver|next person|do not|don.?t (?:give|forget|leave|let)|must|watch for|remember to|be sure to|please (?:check|verify|confirm|call|make sure|keep|watch|look)|make sure|double.?check|verify|follow(?:ing)? up)\b/i]
+];
+/* how serious a record looks: {score, flags}. an entry's own answers count too (an incident level, medication marked not given, a very low mood). */
+function critical(text, own){
+  const flags = new Set(); let score = 0;
+  /* "so nothing is doubled or missed" says what a plan prevents, not a problem that happened */
+  text = String(text || '').replace(/\b(?:so(?: that)?|and) nothing (?:is|gets|will be|goes)\b[^.!?]*/gi, '');
+  for(const [flag, weight, re] of CRIT_RULES) if(re.test(text)){ flags.add(flag); score += weight; }
+  if(own){
+    if(own.severity >= 2){ flags.add('incident'); score += 4; } else if(own.severity === 1){ flags.add('incident'); score += 1; }
+    if(own.meds === false){ flags.add('medication'); score += 4; }
+    if(own.mood <= 2) score += 2;
+  }
+  return {score, flags:[...flags].slice(0, 4)};
+}
+/* a window of room characters around the first serious phrase, for one sentence that is too long by itself */
+function windowAround(sentence, room){
+  if(room < 12) return sentence.slice(0, Math.max(0, room));
+  let at = -1; for(const [, , re] of CRIT_RULES){ const m = re.exec(sentence); if(m && (at < 0 || m.index < at)) at = m.index; }
+  const body = room - 2, start = at < 0 ? 0 : clamp(at - Math.floor(body / 3), 0, Math.max(0, sentence.length - body)), end = Math.min(sentence.length, start + body);
+  return (start > 0 ? '…' : '') + sentence.slice(start, end).trim() + (end < sentence.length ? '…' : '');
+}
+/* shortens a note to the limit in a fixed way that can be explained: split into sentences, keep the most serious ones first (then the first and last), join them back in the original order with " … ", and only if one sentence alone is too long cut a window around the serious phrase. short notes are never changed. */
+function fitNote(raw, limit = NOTE_LIMIT){
+  const t = String(raw || '').replace(/\s+/g, ' ').trim();
+  if(t.length <= limit) return {text:t, cut:false};
+  const sentences = t.match(/[^.!?]+(?:[.!?]+|$)\s*/g) || [t];
+  const parts = sentences.map((x, i) => ({i, s:x.trim(), sc:critical(x).score * 10 + (i === 0 ? 2 : 0) + (i === sentences.length - 1 ? 1 : 0)})).filter(x => x.s);
+  /* sentences that were next to each other stay joined with a space. only a real gap gets the " … " */
+  const join = arr => { const s = [...arr].sort((a, b) => a.i - b.i); return s.map((x, k) => (k ? (x.i === s[k - 1].i + 1 ? ' ' : ' … ') : '') + x.s).join(''); };
+  const chosen = [];
+  for(const c of [...parts].sort((a, b) => b.sc - a.sc || a.i - b.i)){
+    if(!chosen.length) chosen.push({i:c.i, s:c.s.length > limit ? windowAround(c.s, limit) : c.s});
+    else if(join([...chosen, c]).length <= limit) chosen.push(c);
+  }
+  return {text:join(chosen).slice(0, limit), cut:true};
+}
+/* swaps the person's name and the profile's medication, condition and doctor names for placeholders. the map lets the answer be translated back on screen */
+function makeScrubber(){
+  const p = prof(), rules = [], esc_ = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rule = (tok, orig) => rules.push({tok, orig, re:new RegExp((/^\w/.test(orig) ? '\\b' : '') + esc_(orig) + (/\w$/.test(orig) ? '\\b' : ''), 'gi')});
+  const nm = String(p.name || '').trim(); if(nm.length > 1) rule('[NAME]', nm);
+  const group = (strings, prefix, min) => [...new Set(strings.flatMap(x => String(x).split(/[,;()]/)).map(x => x.trim()).filter(x => x.length >= min))].sort((a, b) => b.length - a.length).forEach((orig, i) => rule(`[${prefix}${i + 1}]`, orig));
+  group(p.medications.map(m => m.name), 'MED', 3);
+  group(p.diagnoses, 'CONDITION', 4);
+  group(p.doctors.map(d => d.name).flatMap(n => [n, ...n.split(/\s+/)]), 'DOCTOR', 4);
+  return {scrub:t => rules.reduce((acc, r) => acc.replace(r.re, r.tok), String(t || '')), map:rules.map(r => [r.tok, r.orig])};
+}
+const restoreMap = (text, map) => (map || []).reduce((acc, [tok, orig]) => acc.split(tok).join(orig), String(text || ''));
+function aiAgeGroup(age){ return typeof age !== 'number' ? 'unspecified' : age < 13 ? 'child' : age < 18 ? 'teen' : age < 65 ? 'adult' : 'older adult'; }
+const isCritical = c => c.score >= 5;
+/* take serious records first (most serious, then newest), then the newest with a written note, until the count or byte limit is used. returned oldest first */
+function pickRecords(cands, kind){
+  const order = [...cands].sort((a, b) => isCritical(b) - isCritical(a) || b.score - a.score || new Date(b.ts) - new Date(a.ts));
+  const out = []; let used = 0;
+  for(const c of order){
+    const size = JSON.stringify(c.item).length + 1;
+    if(out.length >= COUNTS[kind] || used + size > BYTES[kind]) continue;
+    out.push(c); used += size;
+  }
+  return out.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+}
+function careContext(){
+  const p = prof(), sc = makeScrubber(), {ds, insights} = computeInsights(range), es = ds.flatMap(d => d.es), uniq = (a, n) => [...new Set(a)].slice(0, n);
+  const cutoff = startOfDay(new Date()); cutoff.setDate(cutoff.getDate() - (range - 1));
+  const earlyCut = new Date(cutoff); earlyCut.setDate(earlyCut.getDate() - EARLIER_DAYS);
+  const inRange = ts => new Date(ts) >= cutoff, early = ts => { const d = new Date(ts); return d < cutoff && d >= earlyCut; };
+  const seriousEarlier = c => c.flags.some(f => f === 'medication' || f === 'safety' || f === 'unresolved') && c.score >= 4;
+  const entryC = [], handC = [], logC = [];
+  for(const e of entriesR()){
+    const here = inRange(e.ts); if(!here && !early(e.ts)) continue;
+    const full = sc.scrub(e.notes), c = critical(full, e); if(!here && !seriousEarlier(c)) continue;
+    const f = fitNote(full), d = new Date(e.ts);
+    entryC.push({ts:e.ts, score:c.score + (f.text ? 1 : 0) + (here ? 0 : 5), cut:f.cut, has:!!(f.text || c.flags.length),
+      item:{date:dayKey(e.ts), time:`${pad(d.getHours())}:${pad(d.getMinutes())}`, mood:e.mood, meds:e.meds, routine:e.routine, behaviors:e.behaviors.slice(0, 4), triggers:e.triggers.slice(0, 4), severity:e.severity, notes:f.text, flags:c.flags, ...(here ? {} : {earlier:true})}});
+  }
+  const logs = careLogsR(), newest = cat => logs.filter(l => l.cat === cat && early(l.ts)).sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+  for(const l of logs){
+    if(l.cat === 'signoff') continue;
+    const here = inRange(l.ts); if(!here && !early(l.ts)) continue;
+    const full = sc.scrub(l.details), c = critical(full), keepEarlier = l === newest('baseline') || l === newest('medication') || seriousEarlier(c);
+    if(!here && !keepEarlier) continue;
+    const f = fitNote(full), when = here ? {} : {earlier:true};
+    if(l.cat === 'handoff') handC.push({ts:l.ts, score:c.score + 1, cut:f.cut, has:true, item:{date:dayKey(l.ts), text:f.text, flags:c.flags, ...when}});
+    else logC.push({ts:l.ts, score:c.score + (here ? 1 : 0) + (here ? 0 : 5), cut:f.cut, has:true, item:{date:dayKey(l.ts), kind:l.cat, title:sc.scrub(l.title).slice(0, 100), details:f.text, highlights:l.highlights.slice(0, 3).map(h => sc.scrub(h).slice(0, 80)), flags:c.flags, ...when}});
+  }
+  const pe = pickRecords(entryC, 'entries'), ph = pickRecords(handC, 'handoffs'), pl = pickRecords(logC, 'careLogs');
+  const left = (all, picked) => all.filter(c => c.has && !picked.includes(c)).length;
+  const shortened = [...pe, ...ph, ...pl].filter(c => c.cut).length;
+  /* urgent records for the on-screen list: found with keyword rules from every record in the period, not just the ones that fit in the request, and shown even if the ai is slow or fails */
+  const isUrgent = (it, own) => it.flags.some(f => f === 'medication' || f === 'safety' || f === 'unresolved') || (own && it.severity >= 3);
+  const urgentRaw = [...entryC.map(c => ({c, src:'Entry', text:c.item.notes || (c.item.meds === false ? 'Medication was logged as not given.' : c.item.severity >= 3 ? `Incident level ${c.item.severity} logged.` : ''), own:true})),
+      ...handC.map(c => ({c, src:'Handoff note', text:c.item.text})), ...logC.map(c => ({c, src:'Care log', text:(c.item.title ? c.item.title + '. ' : '') + c.item.details}))]
+    .filter(x => x.text && isUrgent(x.c.item, x.own)).sort((a, b) => b.c.score - a.c.score || new Date(b.c.ts) - new Date(a.c.ts));
+  /* the same event is often written down twice (a check-in and a care timeline log on the same day). it is listed once and every place it is recorded is named. */
+  const seenEv = new Map(), merged = [];
+  for(const x of urgentRaw){
+    const k = x.c.item.date + '|' + (['medication', 'safety', 'unresolved'].find(f => x.c.item.flags.includes(f)) || 'incident');
+    if(seenEv.has(k)){ const m = seenEv.get(k); if(x.src !== m.x.src && !m.also.includes(x.src)) m.also.push(x.src); } else { const m = {x, also:[]}; seenEv.set(k, m); merged.push(m); }
+  }
+  const urgent = merged.slice(0, 6).map(m => ({date:m.x.c.item.date, src:m.x.src, also:m.also, text:m.x.text, earlier:!!m.x.c.item.earlier}));
+  const signed = logs.filter(l => l.cat === 'signoff' && inRange(l.ts)), pctOf = fn => es.length ? pct(es.filter(fn).length, es.length) : null;
+  const payload = {
+    v:1, person:{ageGroup:aiAgeGroup(p.age)}, rangeDays:range,
+    stats:{daysLogged:ds.length, checkIns:Math.min(es.length, 500), avgMood:es.length ? Math.round(avg(es.map(e => e.mood)) * 10) / 10 : null, hardDays:ds.filter(isHard).length,
+      medsGivenPct:pctOf(e => e.meds), routineDonePct:pctOf(e => e.routine), incidents:Math.min(es.filter(e => e.severity > 0).length, 500),
+      medSignoffs:{signedInRange:Math.min(signed.length, 2000), scheduledPerDay:Math.min(p.medications.length, 50), daysWithSignoff:Math.min(new Set(signed.map(l => dayKey(l.ts))).size, 60)}},
+    insights:insights.slice(0, 6).map(i => ({title:sc.scrub(i.title), text:sc.scrub(i.text), strength:i.strength})),
+    recentDays:ds.slice(-7).map(d => ({date:d.key, avgMood:Math.round(d.avg * 10) / 10, checkIns:Math.min(d.n, 30), triggers:uniq(d.triggers, 4), behaviors:uniq(d.es.flatMap(e => e.behaviors), 3), incidents:Math.min(d.incidents, 30)})),
+    triggers:p.triggers.slice(0, 6).map(sc.scrub), comfort:p.sensory.slice(0, 6).map(sc.scrub),
+    entries:pe.map(c => c.item), handoffs:ph.map(c => c.item), careLogs:pl.map(c => c.item),
+    omitted:{entries:left(entryC, pe), handoffs:left(handC, ph), careLogs:left(logC, pl), shortened}
+  };
+  return {payload, map:sc.map, urgent, meta:{entries:pe.length, handoffs:ph.length, careLogs:pl.length, shortened, omitted:payload.omitted.entries + payload.omitted.handoffs + payload.omitted.careLogs, earlier:[...pe, ...ph, ...pl].filter(c => c.item.earlier).length}};
+}
+const sigOf = ctx => JSON.stringify(ctx.payload) + '|' + JSON.stringify(ctx.map);
+const aiPayload = () => careContext().payload;
+const validEvents = v => v === undefined || (Array.isArray(v) && v.every(x => isObj(x) && isStr(x.event) && isStr(x.followUp)));
+const optStrList = v => v === undefined || isStrList(v);
+const validReflection = r => isObj(r) && typeof r.enoughData === 'boolean' && isStr(r.summary) && isStrList(r.noticed) && isStrList(r.ideas) && isStr(r.caveat) && validEvents(r.importantEvents) && optStrList(r.possibleReasons) && optStrList(r.unclear);
+const validDoctor = d => isObj(d) && isStr(d.summary) && validEvents(d.importantEvents) && isStrList(d.patterns) && isStrList(d.questions) && isStrList(d.uncertainties);
+/* one plain sentence saying what was sent, shown under every result */
+function sentNote(meta){
+  const parts = [plural(meta.entries, 'entry', 'entries'), plural(meta.handoffs, 'handoff note'), plural(meta.careLogs, 'care log')].join(', ');
+  return `Based on ${parts}${meta.earlier ? ` (${meta.earlier} from before the period because they still matter)` : ''}.${meta.shortened ? ` ${plural(meta.shortened, 'long note was', 'long notes were')} shortened, keeping the most important sentences.` : ''}${meta.omitted ? ` ${plural(meta.omitted, 'record')} did not fit and ${meta.omitted === 1 ? 'was' : 'were'} left out; serious events are always kept first.` : ''}`;
+}
+
+async function requestAiReflection(){
+  if(ai.status === 'loading' && ai.rid === R().id && ai.range === range) return;       // ignore double clicks
+  const mine = ++aiSeq, rid = R().id, rng = range;
+  const show = next => { if(mine !== aiSeq) return; ai = Object.assign(aiIdle(), next, {rid, range:rng}); pendingFocus = '#ai-status'; if(route().name === 'patterns') render(true); };
+  const fail = message => show({status:'error', message});
+  if(location.protocol === 'file:') return fail('AI reflections only work on the hosted version of CareThread, not when the file is opened directly. Everything else works as usual.');
+  if(navigator.onLine === false) return fail('You appear to be offline. Reconnect and try again. Everything else in CareThread still works without a connection.');
+  show({status:'loading'});
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 35000);
+  try {
+    const ctx = careContext(), sent = JSON.stringify(ctx.payload);
+    const res = await fetch(AI_ENDPOINT, {method:'POST', headers:{'Content-Type':'application/json'}, body:sent, signal:ctl.signal});
+    let data = null; try { data = await res.json(); } catch {}
+    if(res.ok && data && data.ok === true && validReflection(data.reflection)) show({status:'done', reflection:data.reflection, at:new Date().toISOString(), sig:sigOf(ctx), map:ctx.map, meta:ctx.meta});
+    else if(res.status === 404 || res.status === 405) fail('AI reflections aren’t available in this copy of CareThread because the server part isn’t connected. Everything else works as usual.');
+    else fail(data && data.error && isStr(data.error.message) && data.error.message ? data.error.message : 'The AI reflection couldn’t be made right now. Please try again in a moment.');
+  } catch(e){
+    fail(e && e.name === 'AbortError' ? 'The AI service took too long to answer. Please try again in a moment.' : 'Couldn’t reach the AI service. Check your connection and try again. Everything else in CareThread still works.');
+  } finally { clearTimeout(timer); }
+}
+
+/* the words under the ai buttons, exactly what is sent */
+const aiSendsText = p => `Sends the last ${range} days of entries and notes, handoff notes, care-log details and calculated patterns to an AI service, with ${p.name}’s name and the profile’s medication, condition and doctor names replaced by placeholders (best effort); phone numbers, emergency notes and caregiver names are never sent. Long notes are shortened but urgent items such as lost or missed medication are always kept and flagged first, and this is not medical advice.`;
+const docSendsText = p => `Sends the same records as the reflection to an AI service to draft the summary, urgent events and questions; ${p.name}’s profile facts, statistics and latest handoff notes are added here. You can edit it before you copy, print or download it. Nothing is sent to a doctor, and it is an informational aid, not medical advice.`;
+/* the records the app marked urgent itself (keyword rules, no ai) in plain words */
+function urgentList(ctx, map){
+  if(!ctx.urgent.length) return '';
+  return `<ul class="clean events">${ctx.urgent.map(u => `<li><b>${esc(fmtShort(u.date + 'T12:00:00'))}${u.earlier ? ' (earlier)' : ''}, ${esc([u.src, ...(u.also || [])].map(x => x.toLowerCase()).join(' and '))}</b><br><span>${esc(restoreMap(u.text, map))}</span></li>`).join('')}</ul>`;
+}
+
+function aiCard(ctx){
+  /* a finished reflection only shows while the records it came from are the same. adding or editing entries, notes or logs, or a new day, hides it */
+  const p = prof(), mine = ai.rid === R().id && ai.range === range && (ai.status !== 'done' || ai.sig === sigOf(ctx)), st = mine ? ai.status : 'idle', busy = st === 'loading';
+  const urgent = ctx.urgent.length ? `<details style="margin-top:12px" ${st === 'error' ? 'open' : ''}><summary><b>${plural(ctx.urgent.length, 'record')} the app marked urgent</b></summary><p class="tiny muted">Found by keywords in the notes, not by the AI. Please check each one.</p>${urgentList(ctx, ctx.map)}</details>` : '';
+  const fill = t => esc(restoreMap(t, ai.map));      // placeholders go back to the real names only on this screen
+  const list = (title, items) => items && items.length ? `<h3>${title}</h3><ul class="clean">${items.map(x => `<li>${fill(x)}</li>`).join('')}</ul>` : '';
+  let out = '';
+  if(busy) out = `<div class="aibox" id="ai-status" tabindex="-1" role="status"><p class="muted">Reading ${esc(p.name)}’s last ${range} days of notes and entries…</p><div class="skel"></div><div class="skel" style="width:75%"></div></div>`;
+  else if(st === 'error') out = `<div class="nudge" id="ai-status" tabindex="-1" role="alert" style="margin-top:14px"><svg width="22" height="22" style="flex:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9.5"/></svg><span>${esc(ai.message)}</span></div>${urgent}`;
+  else if(st === 'done'){
+    const r = ai.reflection, ev = r.importantEvents || [];
+    out = `<div class="aibox" id="ai-status" tabindex="-1" aria-label="AI reflection"><span class="chip a">AI-written from caregiver notes</span> <span class="tiny muted">Made at ${fmtTime(ai.at)}</span>
+      <p style="margin-top:10px">${fill(r.summary)}</p>
+      ${ev.length ? `<h3>Needs your attention</h3><ul class="clean events">${ev.map(x => `<li><b>${fill(x.event)}</b>${x.followUp ? `<br><span>To check: ${fill(x.followUp)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+      ${list('What the records show', r.noticed)}${list('Possible reasons (not confirmed)', r.possibleReasons)}${list('Gentle ideas to try', r.ideas)}${list('Unclear or conflicting', r.unclear)}
+      <p class="tiny muted" style="margin-top:12px">${esc(sentNote(ai.meta))}</p>
+      <p class="tiny muted">${fill(r.caveat)}</p>${urgent}</div>`;
+  }
+  return `<div class="card" style="margin-top:18px"><div class="row" style="justify-content:space-between"><div style="flex:1;min-width:240px"><h2 style="margin:0">AI reflection</h2><p class="muted tiny">${esc(aiSendsText(p))} Everything above works without it.</p></div><button class="btn amber" data-act="gen-ai" ${busy ? 'disabled aria-busy="true"' : ''}>${busy ? 'Generating…' : 'Generate AI Reflection'}</button></div>${out}</div>`;
+}
+
+/*
+   ---------- doctor report: one document, shown right away ----------
+   it is first written on this device from the saved records: the profile facts, calculated statistics, records the app flagged, recent incidents and the latest handoff notes. that on-device version is what you see until something changes. once entries, notes or the profile are added, edited or removed, an ai service rewrites the summary, important events, patterns and questions from the same records as the reflection (names replaced by placeholders), and the report updates by itself.
+   if the ai part isn't available (offline, error, slow, a safety check) the on-device report stays with a notice saying why. the text is in an editable box and an automatic update never overwrites the caregiver's edits. nothing is sent to a doctor. it is only copied, printed or saved when the caregiver chooses.
+   the ai part is saved (in this browser only, with the same placeholders) with the exact records it was written from, so a refresh shows it again without a new request.
+*/
+const DOC_KEY = 'carethread.doctor.v1';
+let docCache = (() => { try { const o = JSON.parse(store.get(DOC_KEY) || '{}'); return isObj(o) ? Object.fromEntries(Object.entries(o).filter(([, v]) => isObj(v) && isStr(v.sig) && isTs(v.at) && validDoctor(v.out))) : {}; } catch { return {}; } })();
+const saveDocCache = () => {
+  const keep = Object.entries(docCache).sort((a, b) => new Date(b[1].at) - new Date(a[1].at)).slice(0, 6);      // a few recent reports is plenty
+  docCache = Object.fromEntries(keep); store.set(DOC_KEY, JSON.stringify(docCache));
+};
+const docIdle = () => ({status:'idle', text:'', note:'', at:null, sig:null, ai:false, edited:false, busy:false, failedSig:null});
+const docs = {};                                                // one report per person and period so changing the period never loses an edited one
+const docKey = () => R().id + '|' + range;
+const curDoc = () => (docs[docKey()] ||= docIdle());
+let docSeq = 0, autoDocTimer = 0;
+const ctxEmpty = ctx => !ctx.meta.entries && !ctx.meta.handoffs && !ctx.meta.careLogs;
+/* "touched" = a caregiver added, edited or removed something for this person since the starting data. until then the on-device report is all there is. */
+const touchedR = () => !!(state.touched && state.touched[R().id]);
+const markChanged = rid => { (state.touched ||= {})[rid || R().id] = true; };
+
+/* a short plain summary written on this device from the calculated numbers. the ai one replaces it when it's available */
+function localDoctorSummary(ds, es, inc){
+  const nm = prof().name;
+  if(!es.length) return `No check-ins were logged for ${nm} in this period.`;
+  const hard = ds.filter(isHard).length, serious = inc.filter(e => e.severity >= 3).length;
+  return [`${nm}’s average mood was ${avg(es.map(e => e.mood)).toFixed(1)} of 5 across ${plural(es.length, 'check-in')} on ${plural(ds.length, 'day')}, with ${plural(hard, 'difficult day')}.`,
+    `Medications were logged as given in ${pct(es.filter(e => e.meds).length, es.length)}% of check-ins and the routine was completed in ${pct(es.filter(e => e.routine).length, es.length)}%.`,
+    inc.length ? `${plural(inc.length, 'incident')} ${inc.length === 1 ? 'was' : 'were'} logged${serious ? `, ${serious} of them serious (level 3)` : ''}.` : 'No incidents were logged.'].join(' ');
+}
+/* questions for the doctor that come from the app's own numbers (used when the ai part isn't there) */
+function localDoctorQuestions(insights, es, ctx){
+  const get = id => insights.find(i => i.id === id), qs = [];
+  if(get('sleep') || get('both')) qs.push('Could poor sleep be adding to the harder days, and is there anything we should try?');
+  if(get('sched') && !get('both')) qs.push('Could changes to the schedule be adding to the harder days, and how can we ease them?');
+  const tod = get('tod'); if(tod) qs.push(`Is there anything we should try for ${tod.big.toLowerCase()}, the hardest part of the day?`);
+  if(es.length && es.some(e => !e.meds)) qs.push('Medications were logged as not given at some check-ins. What should caregivers do when a dose is missed?');
+  if(ctx.urgent.some(u => /medication/.test(u.text) || /\b(?:pill|dose|meds?)\b/i.test(u.text))) qs.push('A medication problem was noted in the records. What should we check or change?');
+  return (qs.length ? qs : ['Do the patterns above change how or when medications should be timed?', 'Any adjustments to the daily routine or support for difficult parts of the day?']).slice(0, 4);
+}
+function buildDoctorText(out, ctx){
+  const p = prof(), {ds, insights} = computeInsights(range), es = ds.flatMap(d => d.es), fix = t => restoreMap(t, ctx.map), L = [], bullets = (items, none) => items.length ? items.map(x => '  - ' + fix(x)) : ['  - ' + none];
+  const from = periodStart(range), now = new Date(), hard = ds.filter(isHard), inc = es.filter(e => e.severity > 0), tcs = triggerCounts(ds), signed = ctx.payload.stats.medSignoffs;
+  const sev = n => inc.filter(e => e.severity === n).length;
+  L.push(`DOCTOR REPORT — ${p.name}${p.age ? ', age ' + p.age : ''}`);
+  L.push(`Last ${range} days (${fmtShort(from)} to ${fmtShort(now)}) · prepared ${now.toLocaleDateString([], {year:'numeric', month:'long', day:'numeric'})} from the household care log`);
+  L.push(`Caregiver-reported observations, not a clinical record or a diagnosis.${out ? ' Parts marked (AI) were drafted by an AI assistant from the recorded notes. Please check them.' : ''}`);
+
+  L.push('', out ? 'SUMMARY (AI)' : 'SUMMARY', '  ' + (out ? fix(out.summary) : localDoctorSummary(ds, es, inc)));
+
+  L.push('', 'KEY NUMBERS (calculated by the app from every entry in the period)');
+  if(es.length){
+    L.push(`  - ${plural(es.length, 'check-in')} on ${plural(ds.length, 'day')}; average mood ${avg(es.map(e => e.mood)).toFixed(1)} of 5`,
+      `  - Difficult days (average mood 2.5 or below): ${hard.length}${hard.length ? ` (${hard.length > 6 ? 'most recent: ' : ''}${hard.slice(-6).map(d => fmtShort(d.date)).join(', ')})` : ''}`,
+      `  - Medications logged as given: ${pct(es.filter(e => e.meds).length, es.length)}% of check-ins; routine completed: ${pct(es.filter(e => e.routine).length, es.length)}%`,
+      `  - Incidents logged: ${inc.length}${inc.length ? ` (serious ${sev(3)}, moderate ${sev(2)}, mild ${sev(1)})` : ''}`,
+      `  - Most frequent triggers: ${tcs.ranked.length ? tcs.ranked.slice(0, 5).map(([t, n]) => `${t} (${n}x)`).join(', ') : 'none logged'}${tcs.fromNotes ? ' (includes mentions found in notes)' : ''}`);
+    if(signed.signedInRange) L.push(`  - Dose sign-offs recorded in the app: ${signed.signedInRange} on ${plural(signed.daysWithSignoff, 'day')} (the tracker may not be used every day, so this is not a count of missed doses)`);
+  } else L.push('  - No check-in entries in this period.');
+
+  /* records the app flagged by keyword. if the ai part names an event on the same date that record is already covered so it isn't listed twice. */
+  const covered = u => !!out && out.importantEvents.some(x => x.event.includes(u.date) || x.event.includes(fmtShort(u.date + 'T12:00:00')));
+  const flagged = ctx.urgent.filter(u => !covered(u)).slice(0, 4);
+  if(flagged.length) L.push('', 'FLAGGED RECORDS (found by keyword in the notes, not by AI; please check each one)', ...flagged.map(u => `  - ${fmtShort(u.date + 'T12:00:00')}${u.earlier ? ' (earlier)' : ''}, ${[u.src, ...(u.also || [])].map(x => x.toLowerCase()).join(' and ')}: ${fix(fitNote(u.text, 200).text)}`));
+  if(out && out.importantEvents.length){
+    L.push('', 'IMPORTANT EVENTS TO RAISE (AI; each needs checking)');
+    out.importantEvents.forEach(x => { L.push('  - ' + fix(x.event)); if(x.followUp) L.push('    To check: ' + fix(x.followUp)); });
+  }
+
+  const rule = insights.filter(i => ['sleep', 'sched', 'both', 'wk', 'tod'].includes(i.id)).map(i => i.text);
+  L.push('', out ? 'PATTERNS (AI)' : 'PATTERNS (calculated by the app)', ...(out ? bullets(out.patterns, 'none identified') : bullets(rule, 'No clear patterns yet.')));
+
+  const worst = [...inc].sort((a, b) => b.severity - a.severity || new Date(b.ts) - new Date(a.ts)).slice(0, 4);
+  L.push('', `INCIDENTS (most serious first; ${worst.length < inc.length ? `${worst.length} of ${inc.length}` : 'all'}, as written)`);
+  if(worst.length) worst.forEach(e => L.push(`  - ${fmtShort(e.ts)} ${fmtTime(e.ts)}, severity ${e.severity}/3, ${e.byName}: ${fitNote(e.notes, 200).text || '(no note)'}`)); else L.push('  - none');
+
+  const hands = careLogsR().filter(l => l.cat === 'handoff' && new Date(l.ts) >= startOfDay(from)).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 2);
+  L.push('', 'LATEST HANDOFF NOTES (as written by caregivers)');
+  if(hands.length) hands.forEach(l => L.push(`  - ${fmtShort(l.ts)}, ${l.byName}: ${fitNote(l.details, 240).text}`)); else L.push('  - none in this period');
+
+  L.push('', 'ON FILE IN THE CARE PROFILE', `  Diagnoses: ${p.diagnoses.length ? p.diagnoses.join('; ') : 'none listed'}`, `  Medications: ${p.medications.length ? p.medications.map(m => `${m.name} ${m.dose}${m.time ? ' at ' + m.time : ''}`.trim()).join('; ') : 'none listed'}`,
+    `  Known triggers: ${p.triggers.length ? p.triggers.join('; ') : 'none listed'}`, `  Comfort and sensory preferences: ${p.sensory.length ? p.sensory.join('; ') : 'none listed'}`);
+
+  L.push('', out ? 'QUESTIONS TO ASK THE DOCTOR (AI; these are questions, not conclusions)' : 'QUESTIONS TO ASK THE DOCTOR', ...bullets(out ? out.questions : localDoctorQuestions(insights, es, ctx), 'none suggested'));
+
+  const unclear = out ? [...out.uncertainties] : [];
+  if(ds.length < range) unclear.push(`${plural(range - ds.length, 'day')} of the ${range} have no entries, so counts and averages cover only the ${plural(ds.length, 'day')} that do.`);
+  if(es.length && !signed.signedInRange) unclear.push('The dose sign-off tracker was not used in this period, so medication numbers come only from the check-ins.');
+  if(out && (ctx.meta.omitted || ctx.meta.shortened)) unclear.push(`The AI-drafted parts were written from a selection of the records (${ctx.meta.entries} of ${plural(es.length, 'entry', 'entries')}, some notes shortened). The numbers above use every entry.`);
+  if(unclear.length) L.push('', 'UNCLEAR OR MISSING', ...bullets(unclear, 'none noted'));
+  L.push('', 'YOUR OWN NOTES FOR THE VISIT', '  ');
+  return L.join('\n');
+}
+
+/* (re)write the on-device text when this report was never written, or the records changed and nobody edited it. an exact match in the saved ai drafts is used if there is one */
+function ensureDoctorText(d, ctx){
+  const sig = sigOf(ctx);
+  if(d.status === 'done' && (d.sig === sig || d.edited)) return;
+  const c = docCache[docKey()], hit = !!c && c.sig === sig;
+  d.text = buildDoctorText(hit ? c.out : null, ctx); d.ai = hit; d.at = hit ? c.at : new Date().toISOString(); d.sig = sig; d.status = 'done'; d.note = '';
+}
+function paintDoctor(){
+  const el = $('#doctor-card'); if(!el || route().name !== 'patterns') return;
+  el.outerHTML = doctorCard(careContext());
+}
+async function requestDoctor(opts = {}){
+  const key = docKey(), d = (docs[key] ||= docIdle()), rid = R().id, auto = !!opts.auto;
+  if(d.busy) return;
+  const ctx = careContext(), sig = sigOf(ctx);
+  if(ctxEmpty(ctx)) return;
+  if(!auto) d.edited = false;                                    // pressing the button asks for a fresh report, and the text says it replaces edits
+  const finish = patch => { Object.assign(d, patch, {busy:false}); paintDoctor(); };
+  /* the ai part is a bonus. whatever goes wrong with it the caregiver keeps a correct on-device report plus a notice saying why the ai part is missing */
+  const local = why => { d.failedSig = sig; if(!d.edited){ d.text = buildDoctorText(null, ctx); d.ai = false; d.sig = sig; d.at = new Date().toISOString(); d.status = 'done'; } finish({note:why}); };
+  if(location.protocol === 'file:'){ if(!auto) local('The AI-written parts only work on the hosted version of CareThread, not when the file is opened directly.'); return; }
+  if(navigator.onLine === false){ if(!auto) local('You appear to be offline, so the AI-written parts could not be added.'); return; }
+  const mine = ++docSeq; d.seq = mine; d.busy = true; d.note = ''; ensureDoctorText(d, ctx); paintDoctor();
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 35000);
+  try {
+    const res = await fetch(AI_ENDPOINT, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...ctx.payload, task:'doctor'}), signal:ctl.signal});
+    let data = null; try { data = await res.json(); } catch {}
+    if(d.seq !== mine) return;                                   // the starting data was restored while this was running
+    if(res.ok && data && data.ok === true && validDoctor(data.doctor)){
+      const out = {...data.doctor, importantEvents:data.doctor.importantEvents || []}, at = new Date().toISOString();
+      docCache[key] = {sig, at, out}; saveDocCache();
+      if(rid === R().id && sigOf(careContext()) !== sig){ d.busy = false; paintDoctor(); setTimeout(maybeAutoDoctor, 0); return; }   // the records changed while it was being written, the next update takes care of it
+      finish({status:'done', text:buildDoctorText(out, ctx), ai:true, sig, at, note:'', edited:false, failedSig:null});
+      if(!auto){ const t = $('#doctor-text'); if(t) t.focus({preventScroll:true}); }
+    }
+    else if(res.status === 404 || res.status === 405) local('The AI-written parts aren’t available in this copy of CareThread because the server part isn’t connected.');
+    else local(data && data.error && isStr(data.error.message) && data.error.message ? data.error.message : 'The AI-written parts couldn’t be added right now.');
+  } catch(e){
+    if(d.seq === mine) local(e && e.name === 'AbortError' ? 'The AI service took too long to answer, so the AI-written parts were left out.' : 'Couldn’t reach the AI service, so the AI-written parts were left out.');
+  } finally { clearTimeout(timer); }
+}
+/* after something changes, ask for the ai version once for these exact records. never while the caregiver has edited the text, while a request is running, or again for records that already failed (the button tries again). */
+function maybeAutoDoctor(){
+  if(route().name !== 'patterns' || !touchedR()) return;
+  const d = curDoc(), ctx = careContext();
+  if(ctxEmpty(ctx) || d.busy || d.edited) return;
+  const sig = sigOf(ctx);
+  if((d.ai && d.sig === sig) || d.failedSig === sig) return;
+  const hit = docCache[docKey()]; if(hit && hit.sig === sig){ ensureDoctorText(d, ctx); paintDoctor(); return; }
+  requestDoctor({auto:true});
+}
+function doctorCard(ctx){
+  const p = prof(), d = curDoc(), empty = ctxEmpty(ctx), busy = d.busy;
+  if(!empty) ensureDoctorText(d, ctx);
+  const stale = !empty && d.status === 'done' && d.sig !== sigOf(ctx);
+  let out;
+  if(empty) out = `<div class="empty" style="margin-top:14px">Nothing has been recorded for ${esc(p.name)} in the last ${range} days yet, so there is nothing to put in a doctor report.</div>`;
+  else out = `<div style="margin-top:14px">${d.ai ? '<span class="chip a">Partly drafted with AI from caregiver notes</span>' : '<span class="chip">Written on this device from the saved records</span>'} <span class="tiny muted">Made at ${esc(fmtTime(d.at))}</span>
+      ${busy ? '<p class="tiny muted" id="doctor-status" role="status" style="margin-top:8px">Updating with AI from the latest records…</p>' : ''}
+      ${d.note ? `<div class="nudge" id="doctor-status" tabindex="-1" role="alert" style="margin-top:10px"><span>${esc(d.note)} The report below is the on-device version. You can try again with the button above.</span></div>` : ''}
+      ${stale ? '<div class="nudge" style="margin-top:10px" role="status"><span>Entries, notes or the care profile have changed since this was written. Your edits are kept. Press “Refresh with AI” to rebuild it from the latest records (that replaces this text).</span></div>' : ''}
+      <label class="f" style="margin-top:12px" for="doctor-text">Review and edit before you copy, print or download it<small>This is the whole document. Change anything you like.</small></label>
+      <textarea id="doctor-text" class="doctext" rows="22" spellcheck="true">${esc(d.text)}</textarea><pre class="printcopy" aria-hidden="true">${esc(d.text)}</pre>
+      <div class="row" style="margin-top:12px"><button type="button" class="btn ghost small" data-act="copy-doctor">Copy</button><button type="button" class="btn ghost small" data-act="dl-doctor">Download .txt</button><button type="button" class="btn ghost small" data-act="print-doctor">Print</button></div></div>`;
+  return `<div class="card" id="doctor-card" style="margin-top:18px"><div class="row" style="justify-content:space-between"><div style="flex:1;min-width:240px"><h2 style="margin:0">Doctor report</h2><p class="muted tiny">${esc(docSendsText(p))}</p></div><button class="btn amber" data-act="gen-doctor" ${busy || empty ? 'disabled' : ''} ${busy ? 'aria-busy="true"' : ''}>${busy ? 'Updating…' : d.ai ? 'Refresh with AI' : 'Write with AI'}</button></div>${out}</div>`;
+}
+
+/* records the app flagged by keyword from entries, handoff notes and care logs, so patterns shows the written notes and not just the tick boxes */
+function flaggedCard(ctx){
+  if(!ctx.urgent.length) return '';
+  return `<div class="card" style="margin-top:18px"><h2>Flagged in notes and logs</h2><p class="muted tiny">Serious or still-open items found by keywords in entries, handoff notes and care logs from the last ${range} days. The app found these, not the AI. Please check each one.</p><div class="aibox" style="margin-top:10px">${urgentList(ctx, ctx.map)}</div></div>`;
+}
+function viewPatterns(){
+  const p = prof(), {ds, insights, note} = computeInsights(range), ctx = careContext(), weeks = weekBuckets(ds, range);
+  const sumN = w => w.days.reduce((a, d) => a + d.n, 0), span = w => `Week of ${fmtShort(w.start)} to ${fmtShort(w.end)}: `;
+  const wkly = weeklyBars(weeks, w => sumN(w) ? pct(w.days.reduce((a, d) => a + d.medsOk, 0), sumN(w)) : null, v => v + '%',
+    (w, v) => span(w) + (v === null ? 'no entries' : `medications logged as given in ${v}% of ${plural(sumN(w), 'check-in')}`), '#3D7A5A', 100, 'Medication consistency by calendar week, percent of check-ins');
+  const inc = weeklyBars(weeks, w => sumN(w) ? w.days.reduce((a, d) => a + d.incidents, 0) : null, v => String(v),
+    (w, v) => span(w) + (v === null ? 'no entries' : `${plural(v, 'incident')} across ${plural(sumN(w), 'check-in')}`), '#C06A35', 0, 'Incidents logged per calendar week');
+  const tcs = triggerCounts(ds), trig = tcs.ranked, tmax = trig.length ? trig[0][1] : 1;
+  return `<div class="pagehead"><p class="eyebrow">Longitudinal patterns</p><h1>What the last ${range} days are telling us about ${esc(p.name)}</h1>${rbar()}
+    <div class="row" style="margin-top:12px" role="group" aria-label="Date range">${[7, 14, 28].map(r => `<button class="btn small ${r === range ? '' : 'ghost'}" data-act="set-range" data-r="${r}" aria-pressed="${r === range}">${r} days</button>`).join('')}</div></div>
+  ${note ? `<div class="empty">${esc(note)}</div>` : `
+  <h2 style="margin-bottom:12px">What we’re noticing</h2>
+  <div class="insights">${insights.map(i => `<article class="insight"><span class="badge ${i.strength === 'strong' ? 'strong' : 'mod'}">${i.strength === 'strong' ? 'Strong signal' : 'Early signal'}</span><div class="big">${esc(i.big)}</div><h3>${esc(i.title)}</h3><p>${esc(i.text)}</p><p class="basis">${esc(i.basis)}</p></article>`).join('')}</div>
+  <div class="card" style="margin-top:18px"><h2>In plain words</h2>
+    <p aria-live="polite">${esc(plainWords(insights, p))}</p></div>
+  ${flaggedCard(ctx)}
+  ${aiCard(ctx)}
+  <div class="card" style="margin-top:18px"><h2>Mood over time</h2><p class="muted" style="margin-bottom:8px">Blue dots show ${esc(p.name)}’s average mood across each day’s check-ins. Red dots mark difficult days, when that average was 2.5 or below. The orange line is the 7-day trend: the average of the last seven days, which shows whether mood is improving, declining or holding steady.</p><div class="chartwrap">${lineChart(ds, range)}</div>
+    <ul class="legend" aria-label="Chart key"><li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="#2563C9"/></svg>Blue dots: Daily average mood</li><li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6" fill="#C62F2F"/></svg>Red dots: Difficult days</li><li><svg width="24" height="14" viewBox="0 0 24 14" aria-hidden="true"><path d="M2 7h20" stroke="#E8751A" stroke-width="3" stroke-linecap="round"/></svg>Orange line: 7-day trend</li></ul>
+    <p class="muted tiny" style="margin-top:8px">A day is marked difficult only when its recorded average mood is 2.5 or below.</p>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600;min-height:32px">View as a table</summary><div style="overflow-x:auto;max-height:260px"><table class="plain"><thead><tr><th>Date</th><th>Avg mood</th><th>Entries</th><th>Incidents</th></tr></thead><tbody>${[...ds].reverse().map(d => `<tr><td>${fmtShort(d.date)}</td><td>${d.avg.toFixed(1)}${isHard(d) ? ' (difficult)' : ''}</td><td>${d.n}</td><td>${d.incidents}</td></tr>`).join('')}</tbody></table></div></details></div>
+  <div class="grid2" style="margin-top:18px;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="card"><h2>Medication consistency</h2><div class="chartwrap">${wkly}</div></div>
+    <div class="card"><h2>Incidents per week</h2><div class="chartwrap">${inc}</div></div>
+  </div>
+  <div class="card" style="margin-top:18px"><h2>Triggers logged</h2>${trig.length ? trig.map(([t, n]) => `<div class="hbar"><span>${esc(t)}</span><span class="bar" aria-hidden="true"><i style="width:${Math.round(100 * n / tmax)}%"></i></span><b>${n}</b></div>`).join('') : '<p class="muted">No triggers logged in this range.</p>'}
+    ${tcs.fromNotes ? `<p class="muted tiny" style="margin-top:8px">Counts the triggers ticked on entries, plus ${plural(tcs.fromNotes, 'mention')} that a note describes but nobody ticked (${Object.entries(tcs.noted).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t.toLowerCase()} ${n}`).join(', ')}).</p>` : ''}</div>`}
+  ${doctorCard(ctx)}`;
+}
+
+function viewHousehold(){
+  const h = state.household, adm = isAdmin();
+  return `<div class="pagehead"><p class="eyebrow">Settings</p><h1>${esc(h.name)}</h1></div>
+  <div class="grid2">
+    <div class="stack">
+      <div class="card"><h2>Signed in as</h2><label class="f">Who is using this device<select id="meselect">${h.members.map(m => `<option value="${m.id}" ${m.id === state.me ? 'selected' : ''}>${esc(m.name)} (${m.role})</option>`).join('')}</select></label><p class="tiny muted" style="margin-top:6px">Admins can edit care profiles and manage the circle. Caregivers can log entries and read everything.</p></div>
+      <div class="card"><h2>Care circle</h2>
+        ${h.members.map(m => `<div class="member"><span class="avatar" aria-hidden="true">${esc(initials(m.name))}</span><span style="flex:1;min-width:120px"><b>${esc(m.name)}</b>${m.id === state.me ? ' <span class="chip t">you</span>' : ''}<br><span class="muted tiny">${m.role === 'admin' ? 'Admin: can edit the care profile' : 'Caregiver'}</span></span>
+          ${adm && m.id !== state.me ? `<select data-act-change="role" data-id="${m.id}" aria-label="Role for ${esc(m.name)}" style="width:auto;min-height:42px"><option value="caregiver" ${m.role === 'caregiver' ? 'selected' : ''}>Caregiver</option><option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Admin</option></select><button class="btn danger small" data-act="remove-member" data-id="${m.id}" aria-label="Remove ${esc(m.name)}">Remove</button>` : `<span class="chip">${m.role}</span>`}</div>`).join('')}
+        ${adm ? `<form id="addmember" class="row" style="margin-top:14px"><label class="sr" for="newname">Name</label><input id="newname" type="text" placeholder="Add a caregiver by name" style="flex:1;min-width:180px" maxlength="30"><button class="btn small" type="submit">Add</button></form>` : '<p class="tiny muted" style="margin-top:12px">Only admins can manage members.</p>'}</div>
+      <div class="card"><h2>People in your care</h2>
+        ${state.recipients.map(r => `<div class="member"><span class="avatar p" aria-hidden="true">${esc(initials(r.profile.name))}</span><span style="flex:1;min-width:120px"><b>${esc(r.profile.name)}</b>${r.profile.age ? `, ${esc(r.profile.age)}` : ''}<br><span class="muted tiny">${plural(state.entries.filter(e => e.rid === r.id).length, 'entry', 'entries')} logged</span></span>
+          ${adm && state.recipients.length > 1 ? `<button class="btn danger small" data-act="remove-recipient" data-id="${r.id}" aria-label="Remove ${esc(r.profile.name)}">Remove</button>` : ''}</div>`).join('')}
+        ${adm ? `<form id="addperson" class="row" style="margin-top:14px"><label class="sr" for="pname">Name</label><input id="pname" type="text" placeholder="Name" style="flex:1;min-width:140px" maxlength="30"><label class="sr" for="page">Age</label><input id="page" type="number" min="0" max="120" placeholder="Age" style="width:90px"><button class="btn small" type="submit">Add person</button></form>` : ''}</div>
+      <div class="card"><h2>Reminders</h2>
+        <label class="switch"><span><b>Medication check</b><br><span class="tiny muted">Nudge on Today if no meds are logged as given by 10 AM</span></span><input type="checkbox" data-act-change="rem" data-k="meds" ${state.reminders.meds ? 'checked' : ''}></label>
+        <label class="switch"><span><b>Nothing logged yet</b><br><span class="tiny muted">Nudge on Today if there are no entries by 9 AM</span></span><input type="checkbox" data-act-change="rem" data-k="log" ${state.reminders.log ? 'checked' : ''}></label>
+        <p class="tiny muted">Reminders appear inside the app.</p></div>
+    </div>
+    <div class="stack">
+      <div class="card"><h2>Invite a caregiver</h2><p class="muted" style="margin-bottom:12px">Share this code so a new caregiver can join the circle.</p><span class="code" id="invcode">${esc(h.code)}</span>
+        <div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="copy-code">Copy</button>${adm ? '<button class="btn ghost small" data-act="regen-code">New code</button>' : ''}</div></div>
+      <div class="card"><h2>Your data</h2>
+        <div class="stack" style="gap:10px"><button class="btn ghost small" data-act="export-csv">Export all entries (CSV)</button>
+        <button class="btn danger small" data-act="reset-data">Restore starting data</button></div>
+        <p class="tiny muted" style="margin-top:10px">Everything is saved in this browser only. The optional AI reflection and doctor visit prompt on the Patterns screen send the chosen period’s entries, notes, handoff notes and care logs (names of the person, medications, conditions and doctors replaced by placeholders) only when you press their buttons. The “Today’s entries at a glance” summary is written by an AI service from today’s entries and their notes (the person’s name removed) each time an entry is added, edited or deleted; if the service can’t be reached, a built-in summary is shown instead. CareThread is a family logging tool, not a medical record or medical advice.</p></div>
+    </div>
+  </div>`;
+}
+
+/* === render + routing === */
+const TITLES = {today:'Today', handoff:'Handoff', log:'Log an entry', patterns:'Patterns', profile:'Care profile', household:'Household'};
+let editingProfile = false, lastView = null, pendingFocus = null;
+/* which screen the person was on before the log screen so saving or cancelling puts them back there. starting a shift or posting a note never changes the screen. */
+let curRoute = null, logOrigin = 'today', handoffOpen = false;
+const logBack = () => { location.hash = '#/' + (NAV.some(n => n[0] === logOrigin) && logOrigin !== 'log' ? logOrigin : 'today'); };
+function render(keepScroll){
+  const r = route().name, root = $('#view');
+  const viewId = r + '|' + R().id + '|' + (editId || '') + '|' + (editingProfile ? 'e' : '');
+  const fresh = lastView !== viewId;
+  const html = {today:viewToday, handoff:viewHandoff, log:viewLog, patterns:viewPatterns, profile:() => viewProfile(editingProfile), household:viewHousehold}[r]();
+  const y = window.scrollY;
+  root.innerHTML = html;
+  document.title = `${TITLES[r]} · CareThread`;
+  $('#sidenav').innerHTML = NAV.map(([k, l, h]) => `<a href="${h}" ${k === r ? 'aria-current="page"' : ''}>${ico(k)}<span>${l}</span></a>`).join('');
+  const T = [['today','Today'], ['handoff','Handoff'], ['log','Log'], ['patterns','Patterns'], ['profile','Profile']];
+  $('#tabs').innerHTML = T.map(([k, l]) => `<a href="#/${k}" class="${k === 'log' ? 'fab' : ''}" ${k === r ? 'aria-current="page"' : ''}>${k === 'log' ? `<span class="dot">${ico('log', 28)}</span><span>${l}</span>` : `${ico(k, 24)}<span>${l}</span>`}</a>`).join('');
+  $('#whoami').innerHTML = `Signed in as <b>${esc(me().name)}</b> (${me().role})<br>${esc(state.household.name)}`;
+  if(fresh){
+    lastView = viewId; window.scrollTo(0, 0); root.focus({preventScroll:true});
+    root.classList.remove('view-in'); void root.offsetWidth; root.classList.add('view-in');   // restart the short fade
+  } else if(keepScroll) window.scrollTo(0, y);
+  /* a redraw replaces the button that was just pressed so keyboard focus goes to the matching control */
+  if(pendingFocus){ const el = $(pendingFocus); if(el) el.focus({preventScroll:true}); pendingFocus = null; }
+  justPosted = false; freshIds.clear();     // the arrival animations only play once
+  curRoute = r;
+  clearTimeout(autoDocTimer); if(r === 'patterns') autoDocTimer = setTimeout(maybeAutoDoctor, 900);     // after a change the doctor report updates itself
+}
+window.addEventListener('hashchange', () => {
+  const next = route().name;
+  if(next === 'log' && curRoute && curRoute !== 'log') logOrigin = curRoute;
+  editingProfile = false; handoffOpen = false; if(next !== 'log') editId = null; render();
+});
+
+let toastTimer;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200); }
+async function copy(text, ok){
+  try { await navigator.clipboard.writeText(text); toast(ok); }
+  catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast(ok); } catch { toast('Couldn’t copy. Select the text and copy it by hand.'); } ta.remove(); }
+}
+function download(name, text, type){ const b = new Blob([text], {type}), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); }
+
+function csvCell(v){ let s = String(v ?? ''); if(/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCSV(){
+  const nameOf = id => (state.recipients.find(r => r.id === id) || {profile:{name:''}}).profile.name;
+  const head = ['person','date','time','logged_by','mood','medications_given','routine_completed','behaviors','triggers','severity','notes'];
+  const rows = [...state.entries].sort((a, b) => new Date(a.ts) - new Date(b.ts)).map(e => [nameOf(e.rid), dayKey(e.ts), fmtTime(e.ts), e.byName, e.mood, e.meds ? 'yes' : 'no', e.routine ? 'yes' : 'no', e.behaviors.join('; '), e.triggers.join('; '), e.severity, e.notes]);
+  download(`carethread-entries-${todayKey()}.csv`, [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv');
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', async ev => {
+  const np = ev.target.closest('.note-txt');
+  if(np){ const open = np.classList.toggle('open'); np.setAttribute('aria-expanded', open); return; }
+  const b = ev.target.closest('[data-act]'); if(!b) return;
+  const a = b.dataset.act;
+  if(a === 'copy-summary'){ const n = noteR(); copy((n ? n.text + '\n\n' : '') + glanceView().text, 'Handoff note copied'); }
+  else if(a === 'sign-dose') signOffDose(b.dataset.key);
+  else if(a === 'undo-dose') undoDose(b.dataset.key);
+  else if(a === 'start-shift') startShift();
+  else if(a === 'end-shift') endShift();
+  else if(a === 'takeover-shift') takeOverShift();
+  else if(a === 'open-history') openHistory();
+  else if(a === 'dismiss-shift-done'){ justEnded = null; handoffOpen = false; render(true); }
+  else if(a === 'focus-handoff'){ handoffOpen = true; pendingFocus = '#handoff-input'; render(true); const f = $('#handoff-input'); if(f) f.scrollIntoView({behavior:reducedMotion() ? 'auto' : 'smooth', block:'center'}); }
+  else if(a === 'edit-entry'){ editId = b.dataset.id; location.hash = '#/log'; if(route().name === 'log') render(); }
+  else if(a === 'delete-entry'){ const e = state.entries.find(x => x.id === b.dataset.id); if(e && canEdit(e) && confirm(`Delete ${e.byName}’s entry from ${fmtTime(e.ts)}? This can’t be undone.`)){ state.entries = state.entries.filter(x => x.id !== e.id); markChanged(e.rid); save(); render(true); toast('Entry deleted'); scheduleGlance(); } }
+  else if(a === 'set-range'){ range = +b.dataset.r; render(true); }
+  else if(a === 'retry-glance') refreshGlance();
+  else if(a === 'gen-ai') requestAiReflection();
+  else if(a === 'gen-doctor') requestDoctor();
+  else if(a === 'copy-doctor') copy(curDoc().text, 'Doctor report copied');
+  else if(a === 'print-doctor') window.print();
+  else if(a === 'dl-doctor') download(`doctor-report-${prof().name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'care'}-${todayKey()}.txt`, curDoc().text, 'text/plain');
+  else if(a === 'edit-profile'){ editingProfile = true; render(); }
+  else if(a === 'cancel-profile'){ editingProfile = false; render(); }
+  else if(a === 'copy-code') copy(state.household.code, 'Invite code copied');
+  else if(a === 'regen-code'){ if(isAdmin()){ state.household.code = 'CARE-' + String(Math.floor(1000 + Math.random() * 9000)); save(); render(true); toast('New invite code created'); } }
+  else if(a === 'remove-member'){ if(isAdmin() && confirm('Remove this person from the care circle? Their past entries stay.')){ state.household.members = state.household.members.filter(m => m.id !== b.dataset.id); save(); render(true); } }
+  else if(a === 'remove-recipient'){
+    const r = state.recipients.find(x => x.id === b.dataset.id);
+    if(isAdmin() && r && state.recipients.length > 1 && confirm(`Remove ${r.profile.name} and all of their entries? This can’t be undone.`)){
+      state.recipients = state.recipients.filter(x => x.id !== r.id); state.entries = state.entries.filter(e => e.rid !== r.id);
+      delete state.carelogs[r.id]; delete state.notes[r.id]; delete state.doses[r.id]; delete state.shifts[r.id]; state.shiftLog = state.shiftLog.filter(x => x.rid !== r.id);
+      if(state.rid === r.id) state.rid = state.recipients[0].id; save(); render(true);
+    }
+  }
+  else if(a === 'export-csv') exportCSV();
+  else if(a === 'reset-data'){ if(confirm('Replace everything with the starting data? Entries, notes and sign-offs you added will be lost.')){ const keep = state.me; state = seedState(); state.me = keep; handoffDraft = ''; editId = null; editingProfile = false; ai = aiIdle(); aiSeq++; Object.keys(docs).forEach(k => delete docs[k]); docSeq++; docCache = {}; store.del(DOC_KEY); handoffOpen = false; justEnded = null; glanceCache = {}; store.del(GLANCE_KEY); glanceFailed = false; save(); lastView = null; render(true); toast('Starting data restored'); } }
+});
+document.addEventListener('keydown', ev => {
+  if((ev.key === 'Enter' || ev.key === ' ') && ev.target.classList && ev.target.classList.contains('note-txt')){ ev.preventDefault(); ev.target.click(); }
+});
+document.addEventListener('change', ev => {
+  const t = ev.target;
+  if(t.id === 'rsel'){ state.rid = t.value; save(); editingProfile = false; render(); }
+  else if(t.id === 'meselect'){ state.me = t.value; save(); editingProfile = false; render(true); toast(`Now signed in as ${me().name}`); }
+  else if(t.dataset.actChange === 'role' && isAdmin()){
+    const m = state.household.members.find(x => x.id === t.dataset.id);
+    if(m){ if(m.role === 'admin' && t.value === 'caregiver' && state.household.members.filter(x => x.role === 'admin').length <= 1){ toast('There has to be at least one admin.'); render(true); return; } m.role = t.value; save(); render(true); }
+  }
+  else if(t.dataset.actChange === 'rem'){ state.reminders[t.dataset.k] = t.checked; save(); }
+});
+document.addEventListener('submit', ev => {
+  const f = ev.target;
+  if(f.id === 'logform'){
+    ev.preventDefault();
+    const fd = new FormData(f), mood = +fd.get('mood');
+    if(!mood){ $('#moderr').textContent = 'Pick a mood first. It’s the one required answer.'; $('#moderr').scrollIntoView({block:'center'}); return; }
+    const [hh, mm] = String(fd.get('time') || '').split(':').map(Number);
+    const fields = {mood, meds:fd.get('meds') === 'yes', routine:fd.get('routine') === 'yes', behaviors:fd.getAll('beh'), triggers:fd.getAll('trig'), severity:+fd.get('sev') || 0, notes:String(fd.get('notes') || '').trim()};
+    const ed = editId ? state.entries.find(e => e.id === editId) : null;
+    const when = ed ? new Date(ed.ts) : new Date();
+    if(Number.isFinite(hh) && Number.isFinite(mm)) when.setHours(hh, mm, 0, 0);
+    if(ed){ Object.assign(ed, fields, {ts:when.toISOString()}); editId = null; toast('Entry updated'); }
+    else {
+      if(when.getTime() > Date.now() + 60000) when.setDate(when.getDate() - 1);   // a time "later today" that hasn't happened yet can only mean yesterday
+      state.entries.push(Object.assign({id:uid('e'), rid:R().id, ts:when.toISOString(), by:me().id, byName:me().name}, fields, shiftTag(when)));
+      toast('Entry saved.');
+    }
+    markChanged(ed ? ed.rid : R().id); save(); logBack(); scheduleGlance();
+  }
+  else if(f.id === 'profform'){
+    ev.preventDefault();
+    if(!isAdmin()){ toast('Only admins can edit the profile.'); return; }
+    const fd = new FormData(f), lines = k => String(fd.get(k) || '').split('\n').map(s => s.trim()).filter(Boolean);
+    const split = l => l.split('|').map(s => s.trim());
+    R().profile = {
+      name:String(fd.get('name') || '').trim() || prof().name, age:fd.get('age') === '' ? '' : +fd.get('age'),
+      diagnoses:lines('diagnoses'), triggers:lines('triggers'), sensory:lines('sensory'), emergency:String(fd.get('emergency') || '').trim(),
+      medications:lines('medications').map(split).map(([name, dose = '', when = '', time = '']) => ({name, dose, when, time})),
+      doctors:lines('doctors').map(split).map(([name, role = '', phone = '']) => ({name, role, phone}))
+    };
+    markChanged(); save(); editingProfile = false; render(); toast('Profile saved');
+  }
+  else if(f.id === 'handoffform'){ window.submitNewHandoff(ev); }
+  else if(f.id === 'addmember'){
+    ev.preventDefault();
+    const n = $('#newname').value.trim(); if(!n || !isAdmin()) return;
+    state.household.members.push({id:uid('u'), name:n, role:'caregiver'}); save(); render(true); toast(`${n} joined the care circle`);
+  }
+  else if(f.id === 'addperson'){
+    ev.preventDefault();
+    const n = $('#pname').value.trim(), age = $('#page').value; if(!n || !isAdmin()) return;
+    const r = {id:uid('r'), profile:{name:n, age:age === '' ? '' : +age, diagnoses:[], medications:[], triggers:[], sensory:[], doctors:[], emergency:''}};
+    state.recipients.push(r); state.carelogs[r.id] = []; state.rid = r.id; save(); location.hash = '#/profile'; toast(`${n} added. Tap Edit profile to fill in their details.`);
+  }
+});
+
+/*
+   ---------- care log actions ----------
+   every action does the same loop: change the state, save it, redraw from it. that's why a refresh always shows exactly what was on screen.
+*/
+const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const attrValue = v => String(v).replace(/["\\]/g, '\\$&');
+
+/*
+   post a new handoff note. it becomes the active note on today and a new entry on the care timeline right away.
+   connected to the form on the handoff screen, and can also be called from the browser console while recording:
+     submitnewhandoff('calm afternoon. evening medication is due at 8.')
+*/
+window.submitNewHandoff = function submitNewHandoff(input){
+  const field = $('#handoff-input'), err = $('#handoff-error');
+  const fromEvent = isObj(input) && typeof input.preventDefault === 'function';
+  if(fromEvent) input.preventDefault();                       // stops the form from reloading the page
+  if(!fromEvent && typeof input !== 'string' && !field){ toast('End your shift on the Handoff screen to leave a note for the next caregiver.'); return null; }
+  const text = String(typeof input === 'string' ? input : field.value).trim();
+
+  /* 1. check the text */
+  if(!text){ if(err) err.textContent = 'Write a few words for the next caregiver first.'; if(field) field.focus(); else toast('The note is empty.'); return null; }
+  if(text.length > MAX_HANDOFF){ if(err) err.textContent = `Please keep the note under ${MAX_HANDOFF} characters.`; if(field) field.focus(); else toast(`Keep the note under ${MAX_HANDOFF} characters.`); return null; }
+  if(err) err.textContent = '';
+
+  /* 2. add it to the timeline and make it the active note */
+  const at = new Date().toISOString(), who = me();
+  const log = {id:uid('l'), ts:at, cat:'handoff', title:`Handoff from ${who.name}`, details:text, highlights:[], by:who.id, byName:who.name};
+  careLogsR().push(log);
+  state.notes[R().id] = {text, by:who.id, byName:who.name, ts:at, highlights:[], logId:log.id};
+  freshIds.add(log.id); justPosted = true; handoffDraft = ''; handoffOpen = false; justEnded = null; markChanged();
+
+  /* 3. save, 4. redraw */
+  save(); render(true);
+  toast(`Handoff note posted for ${prof().name}. The next caregiver will see it first.`);
+  const card = $('#active-note-card');
+  if(card && card.getBoundingClientRect().top < 0) card.scrollIntoView({behavior:reducedMotion() ? 'auto' : 'smooth', block:'center'});
+  return log;
+};
+
+/* pending -> taken. records who signed and when, and adds a "sign-off" entry to the care timeline. */
+function signOffDose(key){
+  const m = prof().medications.find(x => medKey(x) === key), d = dosesR();
+  if(!m || d.done[key]) return;                               // ignore double taps
+  const at = new Date().toISOString(), who = me();
+  const log = {id:uid('l'), ts:at, cat:'signoff', title:`${m.name} given`, details:`${who.name} signed off ${m.name} ${m.dose}${m.time ? ', scheduled for ' + m.time : ''}.`, highlights:[], by:who.id, byName:who.name};
+  careLogsR().push(log);
+  d.done[key] = {by:who.id, byName:who.name, at, logId:log.id};
+  freshIds.add(log.id); markChanged();
+  pendingFocus = `[data-act="undo-dose"][data-key="${attrValue(key)}"]`;
+  save(); render(true);
+  toast(`${m.name} signed off by ${who.name}.`);
+}
+/* undo a mis-tap: the dose goes back to pending and the timeline entry it made is removed so the record stays honest. */
+function undoDose(key){
+  const d = dosesR(), rec = d.done[key], m = prof().medications.find(x => medKey(x) === key);
+  if(!rec || !canUndoDose(rec)) return;
+  if(rec.logId) state.carelogs[R().id] = careLogsR().filter(l => l.id !== rec.logId);
+  delete d.done[key]; markChanged();
+  pendingFocus = `[data-act="sign-dose"][data-key="${attrValue(key)}"]`;
+  save(); render(true);
+  toast(`${m ? m.name : 'Dose'} set back to pending.`);
+}
+
+/* the handoff box: remember the draft so a redraw never loses it, keep the counter live, ctrl/cmd+enter posts */
+document.addEventListener('input', ev => {
+  if(ev.target.id === 'doctor-text'){ const d = curDoc(); d.text = ev.target.value; d.edited = true; const pc = $('.printcopy'); if(pc) pc.textContent = d.text; return; }          // keep every edit so a redraw never loses it
+  if(ev.target.id !== 'handoff-input') return;
+  handoffDraft = ev.target.value;
+  const c = $('#handoff-counter'); if(c) c.textContent = `${handoffDraft.length} / ${MAX_HANDOFF}`;
+  const e = $('#handoff-error'); if(e && e.textContent) e.textContent = '';
+});
+document.addEventListener('keydown', ev => {
+  if(ev.target.id === 'handoff-input' && ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) window.submitNewHandoff(ev);
+});
+
+/* keeping the app honest over time */
+document.addEventListener('visibilitychange', () => {                // a tab left open overnight starts a fresh medication day
+  if(document.visibilityState === 'visible' && rollDoses()){ save(); render(true); toast('New day: medications are back to pending.'); }
+});
+window.addEventListener('storage', ev => {                           // the app open in two tabs: a change in one shows up in the other
+  if(ev.key === KEY){ const next = loadState(); if(next){ state = next; render(true); } }
+});
+
+render();
+})();
+</script>
+</body>
+</html>
